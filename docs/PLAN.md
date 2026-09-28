@@ -107,6 +107,11 @@ Original plan:
 - Block transfers using READFLASH/WRITEFLASH, with timing measured against avrdude.
 
 ### Phase 5: extras
+- DigiISP updates its own bootloader: an option to upgrade a board's
+  Micronucleus (e.g. 1.x on new Digisparks to 2.6), the way Micronucleus's
+  "upgrade" images do it.
+- Phone-friendly bootstrap (Chrome on Android has WebUSB over USB OTG):
+  collapsible steps, then wiring diagrams on the page.
 - Micronucleus uploader in the web app (vendor requests too), so firmware
   updates need no command-line tools.
 - WebUSB landing page descriptor once the app is hosted (GitHub Pages, HTTPS).

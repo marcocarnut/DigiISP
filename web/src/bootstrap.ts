@@ -83,7 +83,9 @@ async function step1() {
     await list.run('Start DigiISP', () => mn.run());
     status(statusEl,
       '<b>Done.</b> The board now restarts as DigiISP. It generates its serial number on this first start, ' +
-      'so Chrome asks for permission once: click <b>Connect programmer</b> in step 2 and pick DigiISP.', 'ok-banner');
+      'so Chrome asks for permission once: click <b>Connect programmer</b> in step 2 and pick DigiISP.' +
+      '<br><button id="btn-step1-next">Go to step 2 →</button>', 'ok-banner');
+    $('btn-step1-next').onclick = () => goToStep(2);
   } catch (e) {
     log(`step 1: ${errorText(e)}`);
     // USB transfer errors usually mean the bootloader timed out and left
@@ -224,7 +226,21 @@ async function step2() {
   }
 }
 
+// --- step navigation -----------------------------------------------------------
+
+/** Collapse the steps before n, expand n and scroll it to the top. */
+function goToStep(n: number) {
+  document.querySelectorAll<HTMLElement>('#tab-bootstrap section.step').forEach((s) => {
+    s.classList.toggle('collapsed', Number(s.dataset.step) < n);
+  });
+  document.querySelector(`#tab-bootstrap section.step[data-step="${n}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 export function initBootstrap() {
+  // a collapsed step opens again when its title is clicked
+  document.querySelectorAll<HTMLElement>('#tab-bootstrap section.step h2').forEach((h) => {
+    h.onclick = () => h.parentElement!.classList.remove('collapsed');
+  });
   $('btn-step1').onclick = step1;
   $('btn-step2').onclick = step2;
   programmer.subscribe(renderStep2Programmer);

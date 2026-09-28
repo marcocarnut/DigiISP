@@ -36,6 +36,11 @@
   box-sizing: border-box;
 }
 
+/* the hidden attribute must win over display rules below */
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -302,4 +307,29 @@ ol.checklist li.release::before {
 
 .ok-banner {
   background: color-mix(in srgb, var(--ok) 12%, transparent);
+}
+
+section.step {
+  scroll-margin-top: 0.5rem;
+}
+
+section.step.collapsed > :not(h2) {
+  display: none;
+}
+
+section.step.collapsed h2 {
+  margin: 0;
+  cursor: pointer;
+  color: var(--muted);
+}
+
+section.step.collapsed h2::after {
+  content: '✓ done (show)';
+  margin-left: auto;
+  font-size: 0.85rem;
+  font-weight: normal;
+}
+
+.banner button {
+  margin-top: 0.5rem;
 }
