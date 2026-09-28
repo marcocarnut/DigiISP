@@ -141,6 +141,6 @@ int main(int argc, char **argv) {
     libusb_exit(NULL);
 
     if (!count)
-        fprintf(stderr, "no DigiISP %s\n", action == list ? "found" : "rebooted");
+        fprintf(stderr, "no DigiISP %s\n", action == reboot ? "rebooted" : "found");
     return count ? 0 : 1;
 }

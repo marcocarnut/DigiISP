@@ -211,11 +211,6 @@ nav a.active {
   border-bottom-color: var(--accent);
 }
 
-#prompt {
-  position: sticky;
-  top: 0.5rem;
-  z-index: 1;
-}
 
 .step h2 {
   display: flex;
@@ -381,4 +376,99 @@ tr.changed td:first-of-type {
 
 #prompt-text {
   white-space: pre-line;
+}
+
+/* --- first UI round: collapsible sections, modal prompt, narrow screens --- */
+
+details.section > summary {
+  cursor: pointer;
+  list-style-position: outside;
+  margin-left: 1rem;
+}
+
+details.section > summary h3 {
+  display: inline;
+  margin: 0;
+}
+
+#programmer details.section {
+  margin-top: 0.75rem;
+}
+
+#programmer details.section > summary {
+  color: var(--muted);
+}
+
+#fuse-section {
+  margin-top: 1.2rem;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgb(0 0 0 / 0.45);
+}
+
+.overlay .modal {
+  width: min(32rem, 100%);
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  padding: 1rem;
+  border-radius: 8px;
+  background: var(--card);
+  border: 1px solid var(--prompt-border);
+  box-shadow: 0 8px 32px rgb(0 0 0 / 0.3);
+}
+
+#prompt-text {
+  margin: 0 0 1rem;
+  overflow-wrap: anywhere;
+}
+
+.fuse-mem .field {
+  margin: 0.5rem 0 0.8rem;
+}
+
+.fuse-mem .field-head {
+  margin-bottom: 0.2rem;
+}
+
+.fuse-mem select {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.fuse-mem .value-text {
+  font-size: 0.85rem;
+  margin-top: 0.15rem;
+}
+
+.fuse-mem .field.changed .field-head b,
+.fuse-mem .field.changed .value-text {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* nothing may push the page wider than the screen */
+section {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 40rem) {
+  .fuses {
+    grid-template-columns: 1fr;
+  }
+
+  th,
+  td {
+    padding-right: 0.4rem;
+  }
 }

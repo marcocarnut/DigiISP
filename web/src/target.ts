@@ -109,6 +109,7 @@ async function readHexFile(input: HTMLInputElement, size: number): Promise<{ nam
 
 async function identify() {
   target = null;
+  $<HTMLDetailsElement>('fuse-section').open = false;
   $('target').innerHTML = '';
   $('target-ops').hidden = true;
   await withTarget(async (p, part, steps) => {
@@ -297,13 +298,22 @@ async function renderFuses() {
       const input = f.values.length
         ? `<select data-mem="${mem}" data-field="${i}">${options}</select>`
         : `<input class="mono" size="4" data-mem="${mem}" data-field="${i}" value="${cur}">`;
-      const was = fieldValue(config[mem], f.item) !== cur ? ' class="changed"' : '';
-      return `<tr${was}><th title="${esc(f.item.name)}">${esc(f.item.name.toUpperCase())}</th><td>${input}</td><td class="hint">${esc(f.item.description)}</td></tr>`;
+      const wasValue = fieldValue(config[mem], f.item);
+      const was = wasValue !== cur ? `<div class="hint">was: ${esc(describe(f, config[mem]))}</div>` : '';
+      // a select shows long values cut off, so the full text goes below it
+      const text = describe(f, edited[mem]);
+      const full = f.values.length && text.length > 36 ? `<div class="value-text">${esc(text)}</div>` : '';
+      return `<div class="field${wasValue !== cur ? ' changed' : ''}">` +
+        `<div class="field-head"><b title="${esc(f.item.name)}">${esc(f.item.name.toUpperCase())}</b> <span class="hint">${esc(f.item.description)}</span></div>` +
+        `${input}${full}${was}</div>`;
     }).join('');
     const title = mem === 'lock' ? 'lock bits' : `${mem}`;
     return `<div class="fuse-mem"><h4>${title} <input class="mono" size="4" data-hex="${mem}" value="${hex2(edited[mem])}">` +
-      `${changed ? ` <span class="hint">was ${hex2(config[mem])}</span>` : ''}</h4><table>${rows}</table></div>`;
+      `${changed ? ` <span class="hint">was ${hex2(config[mem])}</span>` : ''}</h4>${rows}</div>`;
   }).join('');
+  const anyChange = mems.some((m) => edited[m] !== config[m]);
+  $('fuse-summary').textContent =
+    mems.map((m) => `${m === 'lock' ? 'lock' : m} ${hex2(edited[m])}`).join(' · ') + (anyChange ? ' (changed, not written)' : '');
 
   // editing a field updates the byte, editing the byte updates the fields
   const memFields = (mem: string) => all.filter((f) => f.item.mem === mem);

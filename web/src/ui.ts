@@ -39,7 +39,7 @@ export function ask(text: string): Promise<boolean> {
   const box = $('prompt');
   $('prompt-text').textContent = text;
   box.hidden = false;
-  box.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  $('btn-prompt-ok').focus();
   return new Promise((resolve) => {
     const done = (ok: boolean) => {
       box.hidden = true;

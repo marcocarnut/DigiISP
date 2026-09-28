@@ -4,14 +4,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>DigiISP</title>
-    <link rel="stylesheet" href="./src/style.css" />
   </head>
   <body>
     <header>
       <h1>DigiISP</h1>
       <p class="sub">AVR ISP programming from the browser, for DigiISP and USBasp programmers</p>
       <nav>
-        <a href="#programmer">Programmer</a>
+        <a href="#devices">Devices</a>
         <a href="#bootstrap">Bootstrap</a>
       </nav>
     </header>
@@ -21,16 +20,18 @@
         This browser has no WebUSB. Use Chrome, Edge or another Chromium based browser.
       </p>
 
-      <div id="prompt" class="banner prompt" hidden>
-        <p id="prompt-text"></p>
-        <div class="row">
-          <button id="btn-prompt-ok">Continue</button>
-          <button id="btn-prompt-cancel" class="secondary">Cancel</button>
+      <div id="prompt" class="overlay" hidden>
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="prompt-text">
+          <p id="prompt-text"></p>
+          <div class="row">
+            <button id="btn-prompt-ok">Continue</button>
+            <button id="btn-prompt-cancel" class="secondary">Cancel</button>
+          </div>
         </div>
       </div>
 
-      <!-- Programmer tab -->
-      <div id="tab-programmer">
+      <!-- Devices tab -->
+      <div id="tab-devices">
         <section>
           <h2>Programmer</h2>
           <div class="row">
@@ -74,13 +75,15 @@
               <label class="button secondary" id="ee-write-label">Write .hex file…<input type="file" id="file-ee-write" accept=".hex,.eep,.ihex" hidden /></label>
             </div>
 
-            <h3>Fuses and lock bits</h3>
-            <div id="fuse-editor"></div>
-            <div class="row">
-              <button id="btn-fuses-write" disabled>Write fuses</button>
-              <button id="btn-lock-write" class="secondary" disabled>Write lock bits</button>
-              <button id="btn-fuses-reset" class="secondary" disabled>Undo changes</button>
-            </div>
+            <details class="section" id="fuse-section">
+              <summary><h3>Fuses and lock bits</h3> <span class="hint" id="fuse-summary"></span></summary>
+              <div id="fuse-editor"></div>
+              <div class="row">
+                <button id="btn-fuses-write" disabled>Write fuses</button>
+                <button id="btn-lock-write" class="secondary" disabled>Write lock bits</button>
+                <button id="btn-fuses-reset" class="secondary" disabled>Undo changes</button>
+              </div>
+            </details>
           </div>
 
           <progress id="target-progress" max="1" value="0" hidden></progress>

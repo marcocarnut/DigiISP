@@ -1,3 +1,4 @@
+import './style.css';
 import { describeFuse, Fuses, hex2, TINYx5_FUSES } from './avr';
 import { initBootstrap } from './bootstrap';
 import { CAP_TPI, SCK_OPTIONS, USB_PID, USB_VID } from './protocol';
@@ -14,11 +15,11 @@ const sckSelect = $<HTMLSelectElement>('sck');
 
 // --- tabs -----------------------------------------------------------------
 
-const TABS = ['programmer', 'bootstrap'] as const;
+const TABS = ['devices', 'bootstrap'] as const;
 
 function showTab() {
   const name = location.hash.slice(1);
-  const tab = (TABS as readonly string[]).includes(name) ? name : 'programmer';
+  const tab = (TABS as readonly string[]).includes(name) ? name : 'devices'; // also old #programmer links
   for (const t of TABS) {
     $(`tab-${t}`).hidden = t !== tab;
     document.querySelector(`nav a[href="#${t}"]`)?.classList.toggle('active', t === tab);
@@ -71,8 +72,11 @@ function renderProgrammer(p: UsbAsp | null) {
     );
     extra = `<h3>This board's own fuses</h3>${fuseTables(i.fuses)}`;
   }
+  const reset = p.info ? (p.info.resetControl ? 'drives target reset' : 'bootstrap mode') : '';
+  const summary = [kinds[p.kind], d.serialNumber, reset].filter(Boolean).map((s) => esc(s!)).join(' · ');
   programmerEl.innerHTML =
-    `<table>${rows.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('')}</table>${extra}`;
+    `<details class="section"><summary>${summary}</summary>` +
+    `<table>${rows.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('')}</table>${extra}</details>`;
 }
 
 // --- actions ------------------------------------------------------------------
