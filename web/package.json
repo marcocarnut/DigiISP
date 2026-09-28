@@ -1,0 +1,17 @@
+{
+  "name": "digiisp-web",
+  "private": true,
+  "version": "0.1.0",
+  "license": "GPL-2.0-only",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@types/w3c-web-usb": "^1.0.14",
+    "typescript": "^5.9.3",
+    "vite": "^5.4.21"
+  }
+}

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DigiISP</title>
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>DigiISP</h1>
+      <p class="sub">AVR ISP programming from the browser, for DigiISP and USBasp programmers</p>
+    </header>
+
+    <main>
+      <p id="unsupported" class="banner error" hidden>
+        This browser has no WebUSB. Use Chrome, Edge or another Chromium based browser.
+      </p>
+
+      <section>
+        <h2>Programmer</h2>
+        <div class="row">
+          <button id="btn-connect">Connect programmer…</button>
+          <button id="btn-disconnect" class="secondary" hidden>Disconnect</button>
+        </div>
+        <div id="programmer"></div>
+      </section>
+
+      <section id="target-section" hidden>
+        <h2>Target</h2>
+        <div class="row">
+          <label>SCK
+            <select id="sck"></select>
+          </label>
+          <button id="btn-read-target">Read signature and fuses</button>
+        </div>
+        <p class="hint">
+          SCK must be below a quarter of the target's clock: factory fresh AVRs run at 1 MHz
+          (use 187.5 kHz or less), 128 kHz clocked targets need 16 kHz or less.
+        </p>
+        <div id="prompt" class="banner prompt" hidden>
+          <p id="prompt-text"></p>
+          <div class="row">
+            <button id="btn-prompt-ok">Continue</button>
+            <button id="btn-prompt-cancel" class="secondary">Cancel</button>
+          </div>
+        </div>
+        <div id="target"></div>
+      </section>
+
+      <section>
+        <details>
+          <summary>USB log</summary>
+          <pre id="log"></pre>
+        </details>
+      </section>
+    </main>
+
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

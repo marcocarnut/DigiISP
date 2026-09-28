@@ -1,0 +1,12 @@
+# DigiISP udev rules: give the logged-in user access (needed by WebUSB in
+# Chrome, and by avrdude/micronucleus without sudo).
+#
+#   sudo cp udev/60-digiisp.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload-rules
+#   (then replug the device)
+
+# DigiISP and USBasp: obdev's shared VID/PID for vendor class devices
+SUBSYSTEM=="usb", ATTR{idVendor}=="16c0", ATTR{idProduct}=="05dc", TAG+="uaccess"
+
+# Micronucleus bootloader
+SUBSYSTEM=="usb", ATTR{idVendor}=="16d0", ATTR{idProduct}=="0753", TAG+="uaccess"

@@ -1,0 +1,4 @@
+digiisp.elf
+digiisp.hex
+*.o
+local.mk
