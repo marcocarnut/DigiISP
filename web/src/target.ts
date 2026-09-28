@@ -167,6 +167,7 @@ async function flashWrite(verifyOnly: boolean) {
     const end = Math.ceil(image.end / Math.max(part.flash.page, 1)) * Math.max(part.flash.page, 1);
     if (!verifyOnly) {
       await steps.run('Chip erase (flash, EEPROM unless EESAVE, lock bits)', () => chipErasePart(p, part));
+      await refreshConfig(p, part); // the erase cleared the lock bits
       await steps.run('Write flash', () =>
         writeFlash(p, image.data.subarray(0, end), part.flash.paged ? part.flash.page : 0, (f) => progress(f * 0.5)));
     }
@@ -186,11 +187,16 @@ async function chipErase() {
   if (!(await ask('Chip erase clears the whole flash, the EEPROM (unless the EESAVE fuse is set) and the lock bits. Continue?'))) return;
   await withTarget(async (p, part, steps) => {
     await steps.run('Chip erase', () => chipErasePart(p, part));
-    // lock bits are cleared: refresh what we show
-    target!.config = await readConfig(p, part);
-    edited = { ...target!.config };
-    renderFuses();
+    await refreshConfig(p, part); // the erase cleared the lock bits
   });
+}
+
+/** Re-read fuses and lock bits into the editor, e.g. after a chip erase. */
+async function refreshConfig(p: UsbAsp, part: Part) {
+  if (!target) return;
+  target.config = await readConfig(p, part);
+  edited = { ...target.config };
+  await renderFuses();
 }
 
 async function eepromRead() {

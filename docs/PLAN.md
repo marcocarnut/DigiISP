@@ -113,8 +113,15 @@ erase+write+verify and verify from .hex (6000 random bytes in ~11 s, same as
 avrdude), EEPROM write of changed bytes and read, fuse editor (BODLEVEL change
 read back; the RSTDISBL warning shown and cancelled), lock bits set and then
 cleared by chip erase. avrdude `-c usbasp-clone` writes and verifies flash and
-EEPROM through the same firmware. Not yet tested: parts other than the
-ATtiny85, flash beyond 64 KB, unpaged flash (AT90S).
+EEPROM through the same firmware.
+Also tested on an Arduino Nano clone, which turned out to be an ATmega328PB
+(1E 95 16), over its ICSP header: full config editor (BOOTSZ, BOOTRST,
+BLB0/BLB1, CFD), 32 KB flash read in 19 s at 187.5 kHz, 7.4 s at 750 kHz and
+6.4 s at the fastest setting (~1 MHz, USB bound); 30 KB of random data
+erased, written and verified in 18.5 s; then the backed-up bootloader,
+sketch, EEPROM and lock bits restored through the page, confirmed by avrdude.
+Not yet tested: flash beyond 64 KB (ATmega1280/2560, coming), unpaged flash
+(AT90S).
 
 Original plan:
 - Part database generated from avrdude.conf (GPL; signatures, memory and page
