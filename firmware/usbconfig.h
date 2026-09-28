@@ -73,7 +73,9 @@ extern void usbHadReset(void);
 #define USB_CFG_DESCR_PROPS_STRING_0                0
 #define USB_CFG_DESCR_PROPS_STRING_VENDOR           0
 #define USB_CFG_DESCR_PROPS_STRING_PRODUCT          0
-#define USB_CFG_DESCR_PROPS_STRING_SERIAL_NUMBER    0
+/* Serial number in RAM (main.c), built at boot from EEPROM. Chrome only
+ * remembers WebUSB permissions for devices that have a serial number. */
+#define USB_CFG_DESCR_PROPS_STRING_SERIAL_NUMBER    (USB_PROP_IS_RAM | USB_PROP_LENGTH(2 + 2 * 8))
 #define USB_CFG_DESCR_PROPS_HID                     0
 #define USB_CFG_DESCR_PROPS_HID_REPORT              0
 /* BOS descriptor is served by usbFunctionDescriptor() from flash. */

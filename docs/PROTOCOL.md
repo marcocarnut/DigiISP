@@ -14,6 +14,7 @@ request to the device** on endpoint 0, so it maps directly onto WebUSB's
 |---|---|
 | VID:PID | `16c0:05dc` (obdev's shared vendor-class ID, same as USBasp) |
 | Manufacturer / Product | `DigiISP` / `DigiISP` (USBasp: `www.fischl.de` / `USBasp`) |
+| Serial number | 8 hex digits, generated on first boot and kept in EEPROM (addresses 0x10–0x13) |
 | bcdUSB | 2.10, so Windows asks for the BOS descriptor |
 | Class | 0xFF (vendor) on device and interface; no endpoints besides EP0 |
 
@@ -80,6 +81,7 @@ avrdude only looks at bits 0 and 24.
 | # | Name | Dir | Reply |
 |---|---|---|---|
 | 0x40 | INFO | IN | 10 bytes: `'D' 'I'`, protocol version, firmware version, flags (bit 0 = reset control), OSCCAL, own low fuse, own high fuse, own extended fuse, own lock bits |
+| 0x41 | REBOOT | IN | – (about 50 ms later the device drops off the bus, and the watchdog resets it into Micronucleus) |
 | 0x4D | MS OS 2.0 | IN, wIndex = 7 | the Microsoft OS 2.0 descriptor set (162 bytes: WinUSB compatible ID plus a DeviceInterfaceGUIDs property) |
 
 ### Bootstrap mode (no reset control)
@@ -90,6 +92,14 @@ reset to resynchronise, so between retries it sends a single extra SCK pulse
 instead. That shifts the target's serial programming logic by one bit, so it
 realigns within 8 tries. If it still fails, the host asks the user to release
 and press reset again.
+
+## Serial number
+
+Chrome only remembers a WebUSB permission across replugs when the device has a
+serial number. The ATtiny85 has no unique ID, so on first boot the firmware
+builds 32 random bits from the jitter between the watchdog oscillator and the
+CPU clock (about 1 s, once) and stores them in EEPROM. Micronucleus never
+erases EEPROM, so the serial number survives firmware updates.
 
 ## Descriptors
 

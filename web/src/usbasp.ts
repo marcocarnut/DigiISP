@@ -38,6 +38,12 @@ export class UsbAsp {
   ) {}
 
   /** Ask the user to pick a device (must be called from a user gesture). */
+  /** Devices this origin already has permission for (no chooser needed). */
+  static async permitted(): Promise<USBDevice[]> {
+    const devices = await navigator.usb.getDevices();
+    return devices.filter((d) => d.vendorId === USB_VID && d.productId === USB_PID);
+  }
+
   static async request(log: TransferLogger): Promise<UsbAsp> {
     const device = await navigator.usb.requestDevice({
       filters: [{ vendorId: USB_VID, productId: USB_PID }],
@@ -128,6 +134,12 @@ export class UsbAsp {
         };
       }
     }
+  }
+
+  /** DigiISP only: reset into the Micronucleus bootloader. The device
+   * disconnects right after this. */
+  async reboot(): Promise<void> {
+    await this.controlIn(Func.DigiIspReboot, [], 0);
   }
 
   // --- ISP ---------------------------------------------------------------

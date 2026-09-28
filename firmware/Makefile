@@ -2,6 +2,7 @@
 #
 #   make            build digiisp.hex
 #   make flash      upload with micronucleus (plug the board in when asked)
+#   make upload     reboot a running DigiISP into the bootloader, then upload
 #
 # Put local overrides (e.g. MICRONUCLEUS = /path/to/micronucleus) in local.mk.
 
@@ -10,6 +11,7 @@
 MCU          ?= attiny85
 F_CPU        ?= 16500000
 MICRONUCLEUS ?= micronucleus
+REBOOT       ?= ../tools/digiisp-reboot
 # Micronucleus 2.x t85: bootloader at 0x1A00, minus 6 bytes of postscript
 MAX_SIZE     ?= 6650
 
@@ -47,7 +49,14 @@ size: digiisp.elf
 flash: digiisp.hex
 	$(MICRONUCLEUS) --run $<
 
+upload: digiisp.hex $(REBOOT)
+	$(REBOOT)
+	$(MICRONUCLEUS) --run --timeout 20 $<
+
+$(REBOOT):
+	$(MAKE) -C $(dir $(REBOOT))
+
 clean:
 	rm -f $(OBJS) digiisp.elf digiisp.hex
 
-.PHONY: all size flash clean
+.PHONY: all size flash upload clean

@@ -24,6 +24,7 @@ export enum Func {
   GetCapabilities = 127,
   // DigiISP extensions
   DigiIspInfo = 0x40,
+  DigiIspReboot = 0x41,
 }
 
 export const BLOCKFLAG_FIRST = 1;

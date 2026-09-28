@@ -1,5 +1,5 @@
 import { describeFuse, Fuses, hex2, partName, readTargetInfo, TINYx5_FUSES } from './avr';
-import { CAP_TPI, SCK_OPTIONS } from './protocol';
+import { CAP_TPI, SCK_OPTIONS, USB_PID, USB_VID } from './protocol';
 import { UsbAsp } from './usbasp';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -10,6 +10,7 @@ const targetEl = $('target');
 const targetSection = $('target-section');
 const btnConnect = $<HTMLButtonElement>('btn-connect');
 const btnDisconnect = $<HTMLButtonElement>('btn-disconnect');
+const btnReboot = $<HTMLButtonElement>('btn-reboot');
 const btnReadTarget = $<HTMLButtonElement>('btn-read-target');
 const sckSelect = $<HTMLSelectElement>('sck');
 
@@ -73,6 +74,7 @@ function renderProgrammer(p: UsbAsp) {
   const kinds = { digiisp: 'DigiISP', usbasp: 'USBasp', unknown: 'unknown (speaks USBasp?)' };
   const rows: [string, string][] = [
     ['Device', `${esc(d.manufacturerName ?? '?')} / ${esc(d.productName ?? '?')}`],
+    ['Serial', d.serialNumber ? `<span class="mono">${esc(d.serialNumber)}</span>` : 'none (Chrome forgets permission on replug)'],
     ['Type', kinds[p.kind]],
     ['Capabilities', p.capabilities ? hex2(p.capabilities) + (p.capabilities & CAP_TPI ? ' (TPI)' : '') : 'not reported (old firmware?)'],
   ];
@@ -94,17 +96,44 @@ function renderProgrammer(p: UsbAsp) {
 
 // --- actions ------------------------------------------------------------------
 
+function useProgrammer(p: UsbAsp) {
+  programmer = p;
+  log(`opened ${p.device.manufacturerName} / ${p.device.productName} ${p.device.serialNumber ?? ''}`);
+  renderProgrammer(p);
+  btnConnect.hidden = true;
+  btnDisconnect.hidden = false;
+  btnReboot.hidden = p.kind !== 'digiisp';
+  targetSection.hidden = false;
+  targetEl.innerHTML = '';
+}
+
 async function connectProgrammer() {
   try {
-    programmer = await UsbAsp.request(log);
-    log(`opened ${programmer.device.manufacturerName} / ${programmer.device.productName}`);
-    renderProgrammer(programmer);
-    btnConnect.hidden = true;
-    btnDisconnect.hidden = false;
-    targetSection.hidden = false;
-    targetEl.innerHTML = '';
+    useProgrammer(await UsbAsp.request(log));
   } catch (e) {
     if (e instanceof DOMException && e.name === 'NotFoundError') return; // chooser cancelled
+    showError(programmerEl, e);
+  }
+}
+
+/** Open a device we already have permission for, e.g. after a replug or reload. */
+async function autoConnect(device?: USBDevice) {
+  if (programmer) return;
+  const candidates = device ? [device] : await UsbAsp.permitted();
+  if (candidates.length !== 1) return;
+  try {
+    useProgrammer(await UsbAsp.open(candidates[0], log));
+  } catch (e) {
+    log(`auto-connect failed: ${e instanceof Error ? e.message : e}`);
+  }
+}
+
+async function rebootProgrammer() {
+  if (!programmer) return;
+  try {
+    await programmer.reboot();
+    log('rebooting into bootloader');
+  } catch (e) {
     showError(programmerEl, e);
   }
 }
@@ -121,6 +150,7 @@ function forgetProgrammer() {
   targetSection.hidden = true;
   btnConnect.hidden = false;
   btnDisconnect.hidden = true;
+  btnReboot.hidden = true;
 }
 
 async function readTarget() {
@@ -180,6 +210,13 @@ if (!('usb' in navigator)) {
   $('unsupported').hidden = false;
   btnConnect.disabled = true;
 } else {
+  navigator.usb.addEventListener('connect', (ev) => {
+    if (ev.device.vendorId === USB_VID && ev.device.productId === USB_PID) {
+      log('programmer plugged in');
+      void autoConnect(ev.device);
+    }
+  });
+  void autoConnect();
   navigator.usb.addEventListener('disconnect', (ev) => {
     if (programmer && ev.device === programmer.device) {
       log('programmer unplugged');
@@ -190,4 +227,5 @@ if (!('usb' in navigator)) {
 
 btnConnect.onclick = connectProgrammer;
 btnDisconnect.onclick = disconnectProgrammer;
+btnReboot.onclick = rebootProgrammer;
 btnReadTarget.onclick = readTarget;

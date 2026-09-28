@@ -55,6 +55,9 @@ before it is proven.
 - BOS plus MS OS 2.0 descriptors, so Windows binds WinUSB; udev rule for Linux.
 - OSCCAL fine-tuning after each USB reset.
 - Web page: connect, identify DigiISP vs USBasp, decode the board's own fuses.
+- REBOOT request plus `make upload` (no replugging for firmware updates); serial
+  number in EEPROM so Chrome keeps its permission; the page reconnects to
+  permitted devices automatically.
 - **Test:** flash board #1, check `lsusb`, open the page, and read the fuses.
   If the high fuse reads 0xDD, RSTDISBL is unprogrammed, as expected.
 

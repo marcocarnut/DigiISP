@@ -13,6 +13,7 @@
 #include <avr/pgmspace.h>
 #include <avr/boot.h>
 #include <avr/wdt.h>
+#include <avr/eeprom.h>
 #include <util/delay.h>
 #include <stdlib.h>
 
@@ -35,6 +36,7 @@ static uint16_t prog_pagesize;
 static uint8_t  prog_blockflags;
 static uint16_t prog_pagecounter;
 static uint8_t  prog_address_newmode;
+static uint8_t  rebootRequested;
 
 /* ------------------------------------------------------------------------- */
 /* Descriptors                                                               */
@@ -53,7 +55,7 @@ PROGMEM const char usbDescriptorDevice[18] = {
     USB_CFG_DEVICE_VERSION,
     1,                      /* iManufacturer */
     2,                      /* iProduct */
-    0,                      /* iSerialNumber */
+    3,                      /* iSerialNumber */
     1,                      /* bNumConfigurations */
 };
 
@@ -105,6 +107,54 @@ usbMsgLen_t usbFunctionDescriptor(usbRequest_t *rq) {
         return sizeof(bosDescriptor);
     }
     return 0;
+}
+
+/* ------------------------------------------------------------------------- */
+/* Serial number                                                             */
+/* ------------------------------------------------------------------------- */
+
+#define EE_SERIAL   ((uint32_t *)0x10)
+#define SERIAL_LEN  8
+
+int usbDescriptorStringSerialNumber[1 + SERIAL_LEN] = {
+    USB_STRING_DESCRIPTOR_HEADER(SERIAL_LEN),
+};
+
+/* Random bits from the watchdog oscillator's jitter against the CPU clock:
+ * the two are independent RC oscillators, so the low bits of Timer0 at each
+ * watchdog timeout are unpredictable. Takes ~1 s; runs only on first boot. */
+static uint32_t entropy(void) {
+    uint32_t s = OSCCAL;
+    uint8_t i;
+
+    TCCR0B = (1 << CS00);
+    WDTCR = (1 << WDCE) | (1 << WDE);
+    WDTCR = (1 << WDIF) | (1 << WDIE);  /* 16 ms, interrupt mode, no reset */
+    for (i = 0; i < 64; i++) {
+        while (!(WDTCR & (1 << WDIF)))
+            ;
+        WDTCR |= (1 << WDIF);
+        s = ((s << 3) | (s >> 29)) ^ TCNT0;
+    }
+    wdt_disable();
+    TCCR0B = 0;
+    return s;
+}
+
+/* The serial lives in EEPROM, which Micronucleus never erases, so it
+ * survives firmware updates. */
+static void initSerial(void) {
+    uint32_t serial = eeprom_read_dword(EE_SERIAL);
+    uint8_t i;
+
+    if (serial == 0xFFFFFFFF) {
+        serial = entropy();
+        eeprom_write_dword(EE_SERIAL, serial);
+    }
+    for (i = 0; i < SERIAL_LEN; i++) {
+        uint8_t n = (serial >> (28 - 4 * i)) & 0x0F;
+        usbDescriptorStringSerialNumber[1 + i] = n < 10 ? '0' + n : 'A' - 10 + n;
+    }
 }
 
 /* ------------------------------------------------------------------------- */
@@ -237,6 +287,9 @@ usbMsgLen_t usbFunctionSetup(uchar data[8]) {
         replyBuffer[9] = boot_lock_fuse_bits_get(GET_LOCK_BITS);
         len = DIGIISP_INFO_LEN;
 
+    } else if (data[1] == DIGIISP_FUNC_REBOOT) {
+        rebootRequested = 1;    /* after the status stage, see main() */
+
     } else if (data[1] == DIGIISP_FUNC_MS_OS_20
             && rq->wIndex.word == MS_OS_20_DESCRIPTOR_INDEX) {
         usbMsgPtr = (usbMsgPtr_t)msOs20DescriptorSet;
@@ -316,6 +369,17 @@ uchar usbFunctionWrite(uchar *data, uchar len) {
 
 /* ------------------------------------------------------------------------- */
 
+/* Detach from USB and let the watchdog reset us into Micronucleus, which
+ * starts on every reset (ENTRY_ALWAYS) and disables the watchdog. */
+static void reboot(void) {
+    ispDisconnect();
+    cli();
+    usbDeviceDisconnect();
+    wdt_enable(WDTO_15MS);
+    for (;;)
+        ;
+}
+
 int main(void) {
     uint8_t i;
 
@@ -326,6 +390,7 @@ int main(void) {
     ispResetControl = !(boot_lock_fuse_bits_get(GET_HIGH_FUSE_BITS) & _BV(7));
     ispInit();
     ispDisconnect();
+    initSerial();
 
     usbInit();
     /* force re-enumeration after the bootloader */
@@ -335,6 +400,14 @@ int main(void) {
     usbDeviceConnect();
     sei();
 
-    for (;;)
+    for (;;) {
         usbPoll();
+        if (rebootRequested) {
+            /* keep serving USB for a moment so the host sees the request
+             * complete before we drop off the bus */
+            _delay_ms(1);
+            if (++rebootRequested > 50)
+                reboot();
+        }
+    }
 }

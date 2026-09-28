@@ -42,6 +42,7 @@
 
 /* DigiISP functions */
 #define DIGIISP_FUNC_INFO           0x40    /* IN, DIGIISP_INFO_LEN bytes */
+#define DIGIISP_FUNC_REBOOT         0x41    /* IN, no data: reset into bootloader */
 #define DIGIISP_FUNC_MS_OS_20       0x4D    /* IN, wIndex 7: MS OS 2.0 set */
 
 /* DIGIISP_FUNC_INFO reply layout */
@@ -49,6 +50,6 @@
 #define DIGIISP_MAGIC0              'D'
 #define DIGIISP_MAGIC1              'I'
 #define DIGIISP_PROTOCOL_VERSION    1
-#define DIGIISP_FW_VERSION          1
+#define DIGIISP_FW_VERSION          2
 
 #endif /* __protocol_h_included__ */
