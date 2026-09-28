@@ -63,10 +63,12 @@ PROGMEM const char usbDescriptorDevice[18] = {
 #define MS_OS_20_SET_LEN        0xA2
 #define MS_OS_20_DESCRIPTOR_INDEX 7
 
-/* BOS with a single Microsoft OS 2.0 platform capability, so Windows binds
- * WinUSB (needed for WebUSB) without any driver installation. */
+/* BOS with a Microsoft OS 2.0 platform capability, so Windows binds WinUSB
+ * (needed for WebUSB) without any driver installation. */
 static const PROGMEM uint8_t bosDescriptor[] = {
-    5, USBDESCR_BOS, 33, 0, 1,
+    5, USBDESCR_BOS, 40, 0, 2,
+    /* USB 2.0 extension: no LPM (Linux warns if it's missing) */
+    7, 0x10, 0x02, 0x00, 0x00, 0x00, 0x00,
     /* MS OS 2.0 platform capability */
     28, 0x10, 0x05, 0x00,
     0xDF, 0x60, 0xDD, 0xD8, 0x89, 0x45, 0xC7, 0x4C,     /* {D8DD60DF-4589- */
@@ -76,6 +78,7 @@ static const PROGMEM uint8_t bosDescriptor[] = {
     DIGIISP_FUNC_MS_OS_20,                              /* bMS_VendorCode */
     0x00,                                               /* bAltEnumCode */
 };
+_Static_assert(sizeof(bosDescriptor) == 40, "BOS wTotalLength");
 
 #define W(c) c, 0   /* UTF-16LE character */
 
