@@ -3,12 +3,12 @@
 CFLAGS  ?= -O2 -Wall -Wextra
 LDLIBS  = $(shell pkg-config --libs libusb-1.0)
 
-all: digiisp-reboot
+all: digiisp
 
-digiisp-reboot: digiisp-reboot.c ../firmware/protocol.h
+digiisp: digiisp.c ../firmware/protocol.h
 	$(CC) $(CFLAGS) -o $@ $< $(LDLIBS)
 
 clean:
-	rm -f digiisp-reboot
+	rm -f digiisp
 
 .PHONY: all clean

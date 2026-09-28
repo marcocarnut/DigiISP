@@ -14,7 +14,7 @@ high-voltage programmer; see [docs/PLAN.md](docs/PLAN.md).
 - `firmware/`: ATtiny85 firmware (V-USB, runs under Micronucleus 2.x)
 - `web/`: the web app (TypeScript, Vite)
 - `docs/`: [plan](docs/PLAN.md) and [USB protocol](docs/PROTOCOL.md)
-- `tools/`: `digiisp-reboot`, a command-line tool that resets boards into the bootloader (libusb-1.0)
+- `tools/`: `digiisp`, a command-line tool (libusb-1.0): `digiisp list` shows boards with their fuses, `digiisp reboot` resets them into the bootloader
 - `udev/`: Linux permissions for WebUSB
 
 ## Build and flash the firmware
@@ -26,6 +26,7 @@ cd firmware
 make                 # builds digiisp.hex
 make flash           # then plug the board in when asked
 make upload          # a DigiISP already running: reboot it into the bootloader and upload
+make upload SERIAL=54F6894A   # the same, for one of several boards
 ```
 
 If `micronucleus` isn't on your PATH, put `MICRONUCLEUS = /path/to/micronucleus`

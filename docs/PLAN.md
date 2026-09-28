@@ -81,7 +81,14 @@ Original plan:
 - **Test:** #1 reads #2's signature (1E 93 0B) and fuses. Nothing is written.
 - **Cross-check:** `avrdude -c usbasp-clone -p t85 -U hfuse:r:-:h` while holding reset.
 
-### Phase 3: bootstrap (in progress)
+### Phase 3: bootstrap ✅ (2026-09-28)
+Verified on hardware: a brand new Digispark (Micronucleus 1.x, reset
+enabled) got DigiISP through step 1, then, in bootstrap mode with the
+Franzininho's RESET held by hand, wrote Micronucleus 2.6 plus DigiISP
+and hfuse 0x5D to the Franzininho. The Franzininho came up as Micronucleus
+2.06, then DigiISP, reporting fuses E1/5D/FE and reset control, and still
+takes firmware updates (`make upload`: reboot and upload in 2.8 s).
+
 Built as the page's **Bootstrap** tab (two labelled steps):
 1. DigiISP onto the first board over WebUSB through its Micronucleus
    (port of the upstream uploader: reset vector patching, page writes).
