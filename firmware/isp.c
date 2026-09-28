@@ -14,6 +14,7 @@
 #include <util/delay_basic.h>
 #include "isp.h"
 
+uint8_t ispResetCapable;
 uint8_t ispResetControl;
 
 static uint16_t sck_delay;  /* _delay_loop_2() count per SCK half period */
@@ -72,7 +73,14 @@ static void rstLow(void) {
         PORTB &= ~(1 << ISP_RST);
 }
 
-void ispConnect(void) {
+void ispConnect(uint8_t manualReset) {
+    ispResetControl = ispResetCapable && !manualReset;
+    if (ispResetCapable && !ispResetControl) {
+        /* user holds reset: PB5 must not fight the button */
+        DDRB &= ~(1 << ISP_RST);
+        PORTB &= ~(1 << ISP_RST);
+    }
+
     /* SCK and MOSI low, then outputs */
     PORTB &= ~((1 << ISP_SCK) | (1 << ISP_MOSI) | (1 << ISP_MISO));
     DDRB |= (1 << ISP_SCK) | (1 << ISP_MOSI);
@@ -98,7 +106,7 @@ void ispDisconnect(void) {
     /* all ISP pins inputs, no pullups: releases the target's reset */
     DDRB &= ~((1 << ISP_SCK) | (1 << ISP_MOSI) | (1 << ISP_MISO));
     PORTB &= ~((1 << ISP_SCK) | (1 << ISP_MOSI) | (1 << ISP_MISO));
-    if (ispResetControl) {
+    if (ispResetCapable) {
         DDRB &= ~(1 << ISP_RST);
         PORTB &= ~(1 << ISP_RST);
     }

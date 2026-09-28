@@ -3,6 +3,7 @@
 
 import {
   CAP_DIGIISP_EXTENSIONS,
+  DIGIISP_CONNECT_MANUAL_RESET,
   DIGIISP_FLAG_RESET_CONTROL,
   DIGIISP_INFO_LEN,
   Func,
@@ -154,8 +155,9 @@ export class UsbAsp {
     }
   }
 
-  async connect(): Promise<void> {
-    await this.controlIn(Func.Connect, [], 4);
+  /** manualReset (DigiISP only): don't drive the target reset, the user holds it. */
+  async connect(manualReset = false): Promise<void> {
+    await this.controlIn(Func.Connect, [manualReset ? DIGIISP_CONNECT_MANUAL_RESET : 0], 4);
   }
 
   async disconnect(): Promise<void> {

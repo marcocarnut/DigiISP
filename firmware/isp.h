@@ -27,11 +27,14 @@
 
 /* Nonzero when PB5 is an I/O pin, i.e. we can drive the target's reset.
  * Otherwise the user holds the target in reset (bootstrap mode). */
+extern uint8_t ispResetCapable;
+/* Whether the current connection drives the target reset: ispResetCapable,
+ * unless the host asked for manual reset in CONNECT. */
 extern uint8_t ispResetControl;
 
 void    ispInit(void);
 void    ispSetSCKOption(uint8_t option);
-void    ispConnect(void);
+void    ispConnect(uint8_t manualReset);
 void    ispDisconnect(void);
 uint8_t ispTransmit(uint8_t send_byte);
 uint8_t ispEnterProgrammingMode(void);

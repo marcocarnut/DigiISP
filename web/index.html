@@ -35,6 +35,9 @@
           </label>
           <button id="btn-read-target">Read signature and fuses</button>
         </div>
+        <label id="manual-reset-row" class="hint" hidden>
+          <input type="checkbox" id="manual-reset" /> I'll hold the target's reset myself (PB5 is left alone)
+        </label>
         <p class="hint">
           SCK must be below a quarter of the target's clock: factory fresh AVRs run at 1 MHz
           (use 187.5 kHz or less), 128 kHz clocked targets need 16 kHz or less.

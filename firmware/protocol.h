@@ -40,9 +40,13 @@
 #define DIGIISP_CAP1_EXTENSIONS     0x80    /* DIGIISP_FUNC_* supported */
 #define DIGIISP_FLAG_RESET_CONTROL  0x01    /* we drive the target /RESET */
 
+/* CONNECT s[0] flags (USBasp ignores them, avrdude sends 0) */
+#define DIGIISP_CONNECT_MANUAL_RESET 0x01   /* leave PB5 alone, user holds reset */
+
 /* DigiISP functions */
 #define DIGIISP_FUNC_INFO           0x40    /* IN, DIGIISP_INFO_LEN bytes */
 #define DIGIISP_FUNC_REBOOT         0x41    /* IN, no data: reset into bootloader */
+#define DIGIISP_FUNC_PINS           0x42    /* IN, 3 bytes: PINB, DDRB, PORTB */
 #define DIGIISP_FUNC_MS_OS_20       0x4D    /* IN, wIndex 7: MS OS 2.0 set */
 
 /* DIGIISP_FUNC_INFO reply layout */

@@ -37,6 +37,7 @@ export const CAP_DIGIISP_EXTENSIONS = 1 << 15;
 export const CAP_3MHZ = 1 << 24; // UsbAsp-flash firmware
 
 export const DIGIISP_FLAG_RESET_CONTROL = 0x01;
+export const DIGIISP_CONNECT_MANUAL_RESET = 0x01; // CONNECT s[0]: leave PB5 alone
 export const DIGIISP_INFO_LEN = 10;
 
 // SETISPSCK option ids and their nominal frequencies in Hz

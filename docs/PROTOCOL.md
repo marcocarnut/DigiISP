@@ -34,7 +34,7 @@ and ignores the reply.
 
 | # | Name | Dir | Parameters | Reply / data |
 |---|---|---|---|---|
-| 1 | CONNECT | IN | – | – (drives SCK/MOSI low; pulses and holds /RESET low) |
+| 1 | CONNECT | IN | s[0] bit 0 (DigiISP only): manual reset, leave PB5 alone | – (drives SCK/MOSI low; pulses and holds /RESET low) |
 | 2 | DISCONNECT | IN | – | – (all ISP pins to inputs, releases /RESET) |
 | 3 | TRANSMIT | IN | 4 ISP bytes | the 4 bytes shifted back |
 | 4 | READFLASH | IN | s[0..1] address | wLength bytes of flash |
@@ -82,9 +82,14 @@ avrdude only looks at bits 0 and 24.
 |---|---|---|---|
 | 0x40 | INFO | IN | 10 bytes: `'D' 'I'`, protocol version, firmware version, flags (bit 0 = reset control), OSCCAL, own low fuse, own high fuse, own extended fuse, own lock bits |
 | 0x41 | REBOOT | IN | – (about 50 ms later the device drops off the bus, and the watchdog resets it into Micronucleus) |
+| 0x42 | PINS | IN | 3 bytes: PINB, DDRB, PORTB (for diagnostics, e.g. whether the reset wire has the target's pull-up) |
 | 0x4D | MS OS 2.0 | IN, wIndex = 7 | the Microsoft OS 2.0 descriptor set (162 bytes: WinUSB compatible ID plus a DeviceInterfaceGUIDs property) |
 
 ### Bootstrap mode (no reset control)
+
+This mode applies when PB5 is still our reset pin, or when the host sets the
+manual-reset flag in CONNECT. The flag is for when someone holds the target's
+reset button, so PB5 never drives high against the button.
 
 While PB5 is still the ATtiny85's own RESET pin, CONNECT and DISCONNECT don't
 touch it, and the user holds the target in reset by hand. ENABLEPROG can't pulse

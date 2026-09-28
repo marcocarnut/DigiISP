@@ -13,6 +13,7 @@ const btnDisconnect = $<HTMLButtonElement>('btn-disconnect');
 const btnReboot = $<HTMLButtonElement>('btn-reboot');
 const btnReadTarget = $<HTMLButtonElement>('btn-read-target');
 const sckSelect = $<HTMLSelectElement>('sck');
+const manualResetBox = $<HTMLInputElement>('manual-reset');
 
 let programmer: UsbAsp | null = null;
 
@@ -103,6 +104,7 @@ function useProgrammer(p: UsbAsp) {
   btnConnect.hidden = true;
   btnDisconnect.hidden = false;
   btnReboot.hidden = p.kind !== 'digiisp';
+  $('manual-reset-row').hidden = !(p.info?.resetControl ?? false);
   targetSection.hidden = false;
   targetEl.innerHTML = '';
 }
@@ -159,14 +161,16 @@ async function readTarget() {
   btnReadTarget.disabled = true;
   targetEl.innerHTML = '';
   let connected = false;
+  let manual = false;
   try {
     if (!(await p.setSck(Number(sckSelect.value)))) {
       log('programmer did not accept SCK setting, using its default');
     }
-    await p.connect();
+    manual = !p.resetControl || (p.kind === 'digiisp' && manualResetBox.checked);
+    await p.connect(manual);
     connected = true;
 
-    if (!p.resetControl) {
+    if (manual) {
       const go = await ask('Press and hold the RESET button of the target (or short its PB5 to GND), then click Continue. Keep holding until told to release.');
       if (!go) return;
     }
@@ -193,7 +197,7 @@ async function readTarget() {
       } catch (e) {
         log(`disconnect failed: ${e}`);
       }
-      if (!p.resetControl) targetEl.insertAdjacentHTML('afterbegin', '<p class="banner prompt">You can release the target\'s RESET now.</p>');
+      if (manual) targetEl.insertAdjacentHTML('afterbegin', '<p class="banner prompt">You can release the target\'s RESET now.</p>');
     }
     btnReadTarget.disabled = false;
   }

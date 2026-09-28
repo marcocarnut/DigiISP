@@ -202,7 +202,7 @@ void usbHadReset(void) {
 /* ------------------------------------------------------------------------- */
 
 static uint8_t digiIspFlags(void) {
-    return ispResetControl ? DIGIISP_FLAG_RESET_CONTROL : 0;
+    return ispResetCapable ? DIGIISP_FLAG_RESET_CONTROL : 0;
 }
 
 usbMsgLen_t usbFunctionSetup(uchar data[8]) {
@@ -213,7 +213,7 @@ usbMsgLen_t usbFunctionSetup(uchar data[8]) {
         ispSetSCKOption(prog_sck);
         /* set compatibility mode of address delivering */
         prog_address_newmode = 0;
-        ispConnect();
+        ispConnect(data[2] & DIGIISP_CONNECT_MANUAL_RESET);
 
     } else if (data[1] == USBASP_FUNC_DISCONNECT) {
         ispDisconnect();
@@ -292,6 +292,12 @@ usbMsgLen_t usbFunctionSetup(uchar data[8]) {
 
     } else if (data[1] == DIGIISP_FUNC_REBOOT) {
         rebootRequested = 1;    /* after the status stage, see main() */
+
+    } else if (data[1] == DIGIISP_FUNC_PINS) {
+        replyBuffer[0] = PINB;
+        replyBuffer[1] = DDRB;
+        replyBuffer[2] = PORTB;
+        len = 3;
 
     } else if (data[1] == DIGIISP_FUNC_MS_OS_20
             && rq->wIndex.word == MS_OS_20_DESCRIPTOR_INDEX) {
@@ -390,7 +396,7 @@ int main(void) {
     wdt_disable();
 
     /* RSTDISBL programmed (0) means PB5 is ours to drive the target reset */
-    ispResetControl = !(boot_lock_fuse_bits_get(GET_HIGH_FUSE_BITS) & _BV(7));
+    ispResetCapable = !(boot_lock_fuse_bits_get(GET_HIGH_FUSE_BITS) & _BV(7));
     ispInit();
     ispDisconnect();
     initSerial();

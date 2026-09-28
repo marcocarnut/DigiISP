@@ -36,6 +36,11 @@ PB2 = SCK):
 | PB5 (only after bootstrap) | → | PB5 / RESET |
 | 5V, GND | – | 5V, GND |
 
+Watch the header labels: on the Franzininho, PB5/RESET is on the pin marked **4**,
+not 5. A quick check is DigiISP's PINS request: with the programmer disconnected,
+our PB5 must read 1 (the target's reset pull-up); if it reads 0, the wire isn't
+on the target's reset.
+
 During the bootstrap, hold the target's RESET low with its button (Franzininho)
 or a jumper from P5 to GND (Digispark).
 
@@ -61,7 +66,15 @@ before it is proven.
 - **Test:** flash board #1, check `lsusb`, open the page, and read the fuses.
   If the high fuse reads 0xDD, RSTDISBL is unprogrammed, as expected.
 
-### Phase 2: ISP read-only, reset held by hand
+### Phase 2: ISP read-only ✅ (2026-09-28)
+Tested: a Digispark (which shipped with hfuse 0x5D, so it already drives reset)
+reads a Franzininho (hfuse 0xDD). The page reads signature and fuses
+automatically, and avrdude `-c usbasp-clone` reads signature, fuses and all
+8 KB of flash in 5 s. The raw ISP path also works with the reset button held.
+Not yet tested: bootstrap mode on a board whose reset is still enabled (the
+extra-SCK-pulse resync).
+
+Original plan:
 - The firmware already has the full USBasp ISP set (CONNECT, TRANSMIT,
   ENABLEPROG, READ/WRITE FLASH/EEPROM), ported to the USI.
 - Web page: "Read signature and fuses", which prompts the user to hold reset.
