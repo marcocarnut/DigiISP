@@ -163,7 +163,7 @@ async function step2() {
     });
 
     status(statusEl,
-      '<b>Done.</b> Release the RESET button and disconnect the second board. Plugged into USB, it starts ' +
+      `<b>Done.</b> ${manual ? 'Release the RESET button and disconnect' : 'Disconnect'} the second board. Plugged into USB, it starts ` +
       'Micronucleus and after about 6 s DigiISP' +
       (disableReset ? ', ready to program other boards (and their reset pin, wired to its P5).' : ' (reset still enabled).'),
       'ok-banner');

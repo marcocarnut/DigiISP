@@ -336,7 +336,7 @@ async function writeConfig(which: 'fuses' | 'lock') {
       changes.push(`${mem}: ${hex2(config[mem])} → ${hex2(edited[mem])}`);
       for (const f of all.filter((f) => f.item.mem === mem)) {
         if (fieldValue(config[mem], f.item) === fieldValue(edited[mem], f.item)) continue;
-        changes.push(`  ${f.item.name.toUpperCase()}: ${describe(f, config[mem])} → ${describe(f, edited[mem])}`);
+        changes.push(`– ${f.item.name.toUpperCase()}: ${describe(f, config[mem])} → ${describe(f, edited[mem])}`);
         const r = risk(f, config[mem], edited[mem]);
         if (r) risks.push(r);
       }
@@ -365,7 +365,9 @@ async function writeConfig(which: 'fuses' | 'lock') {
     edited = { ...back };
     await renderFuses();
     if (bad.length) throw new Error(`${bad.join(', ')} read back ${bad.map((m) => hex2(back[m])).join(', ')}`);
-    status($('target-status'), `<b>Written:</b> ${mems.join(', ')}. Fuse changes take effect at the target's next reset.`, 'ok-banner');
+    status($('target-status'), which === 'lock'
+      ? '<b>Lock bits written.</b> Only a chip erase clears them.'
+      : `<b>Written:</b> ${mems.join(', ')}. Fuse changes take effect at the target's next reset.`, 'ok-banner');
   });
 }
 

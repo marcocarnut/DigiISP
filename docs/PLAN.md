@@ -106,7 +106,17 @@ Original plan:
   anything else would change), show before and after, confirm, write, verify.
 - Replug #2: INFO must now report reset control.
 
-### Phase 4: full programmer
+### Phase 4: full programmer (in progress)
+Done and tested on hardware (2026-09-28; Franzininho DigiISP programming a
+Digispark, reset wired): part identification from the database, flash read,
+erase+write+verify and verify from .hex (6000 random bytes in ~11 s, same as
+avrdude), EEPROM write of changed bytes and read, fuse editor (BODLEVEL change
+read back; the RSTDISBL warning shown and cancelled), lock bits set and then
+cleared by chip erase. avrdude `-c usbasp-clone` writes and verifies flash and
+EEPROM through the same firmware. Not yet tested: parts other than the
+ATtiny85, flash beyond 64 KB, unpaged flash (AT90S).
+
+Original plan:
 - Part database generated from avrdude.conf (GPL; signatures, memory and page
   sizes, fuse layouts).
 - Intel HEX parse and export; flash and EEPROM read, write and verify; chip
