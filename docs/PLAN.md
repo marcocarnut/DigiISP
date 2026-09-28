@@ -67,7 +67,7 @@ before it is proven.
   If the high fuse reads 0xDD, RSTDISBL is unprogrammed, as expected.
 
 ### Phase 2: ISP read-only ✅ (2026-09-28)
-Tested: a Digispark (which shipped with hfuse 0x5D, so it already drives reset)
+Tested: a Digispark (whose RSTDISBL the user had set with a minipro, so it drives reset)
 reads a Franzininho (hfuse 0xDD). The page reads signature and fuses
 automatically, and avrdude `-c usbasp-clone` reads signature, fuses and all
 8 KB of flash in 5 s. The raw ISP path also works with the reset button held.
