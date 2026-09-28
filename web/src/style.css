@@ -333,3 +333,52 @@ section.step.collapsed h2::after {
 .banner button {
   margin-top: 0.5rem;
 }
+
+label.button {
+  display: inline-block;
+  font: inherit;
+  padding: 0.4rem 0.9rem;
+  border-radius: 6px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-fg);
+  cursor: pointer;
+}
+
+label.button.secondary {
+  background: transparent;
+  color: var(--accent);
+}
+
+label.button:has(input:disabled) {
+  opacity: 0.5;
+  cursor: default;
+}
+
+h3 {
+  margin: 1.2rem 0 0.4rem;
+  font-size: 1rem;
+}
+
+.fuse-mem h4 {
+  margin: 0.8rem 0 0.2rem;
+  font-size: 0.95rem;
+}
+
+.fuse-mem select {
+  max-width: 100%;
+}
+
+.fuse-mem td:nth-child(2) {
+  width: 55%;
+}
+
+tr.changed th,
+tr.changed td:first-of-type {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+#prompt-text {
+  white-space: pre-line;
+}

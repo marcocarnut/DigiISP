@@ -1,18 +1,16 @@
-import { describeFuse, Fuses, hex2, partName, readTargetInfo, TINYx5_FUSES } from './avr';
+import { describeFuse, Fuses, hex2, TINYx5_FUSES } from './avr';
 import { initBootstrap } from './bootstrap';
 import { CAP_TPI, SCK_OPTIONS, USB_PID, USB_VID } from './protocol';
-import { $, ask, chooseProgrammer, esc, log, programmer, showError } from './ui';
+import { initTarget } from './target';
+import { $, chooseProgrammer, esc, log, programmer, showError } from './ui';
 import { UsbAsp } from './usbasp';
 
 const programmerEl = $('programmer');
-const targetEl = $('target');
 const targetSection = $('target-section');
 const btnConnect = $<HTMLButtonElement>('btn-connect');
 const btnDisconnect = $<HTMLButtonElement>('btn-disconnect');
 const btnReboot = $<HTMLButtonElement>('btn-reboot');
-const btnReadTarget = $<HTMLButtonElement>('btn-read-target');
 const sckSelect = $<HTMLSelectElement>('sck');
-const manualResetBox = $<HTMLInputElement>('manual-reset');
 
 // --- tabs -----------------------------------------------------------------
 
@@ -48,7 +46,6 @@ function renderProgrammer(p: UsbAsp | null) {
   btnDisconnect.hidden = !p;
   btnReboot.hidden = p?.kind !== 'digiisp';
   targetSection.hidden = !p;
-  targetEl.innerHTML = '';
   if (!p) {
     programmerEl.innerHTML = '';
     return;
@@ -116,54 +113,6 @@ async function disconnectProgrammer() {
   programmer.set(null);
 }
 
-async function readTarget() {
-  const p = programmer.get();
-  if (!p) return;
-  btnReadTarget.disabled = true;
-  targetEl.innerHTML = '';
-  let connected = false;
-  let manual = false;
-  try {
-    if (!(await p.setSck(Number(sckSelect.value)))) {
-      log('programmer did not accept SCK setting, using its default');
-    }
-    manual = !p.resetControl || (p.kind === 'digiisp' && manualResetBox.checked);
-    await p.connect(manual);
-    connected = true;
-
-    if (manual) {
-      const go = await ask('Press and hold the RESET button of the target (or short its PB5 to GND), then click Continue. Keep holding until told to release.');
-      if (!go) return;
-    }
-
-    if (!(await p.enableProgramming())) {
-      throw new Error('Target does not answer. Check wiring, power and reset, or try a lower SCK.');
-    }
-    const t = await readTargetInfo(p);
-    const sig = Array.from(t.signature, hex2).join(' ');
-    const name = partName(t.signature);
-    const tiny = name && /^ATtiny[248]5$/.test(name);
-    targetEl.innerHTML =
-      `<table><tr><th>Signature</th><td class="mono">${sig}</td></tr>` +
-      `<tr><th>Part</th><td>${name ?? 'unknown'}</td></tr></table>` +
-      (tiny
-        ? fuseTables(t.fuses)
-        : `<p class="mono">low ${hex2(t.fuses.low)} high ${hex2(t.fuses.high)} ext ${hex2(t.fuses.extended)} lock ${hex2(t.fuses.lock)}</p>`);
-  } catch (e) {
-    showError(targetEl, e);
-  } finally {
-    if (connected) {
-      try {
-        await p.disconnect();
-      } catch (e) {
-        log(`disconnect failed: ${e}`);
-      }
-      if (manual) targetEl.insertAdjacentHTML('afterbegin', '<p class="banner prompt">You can release the target\'s RESET now.</p>');
-    }
-    btnReadTarget.disabled = false;
-  }
-}
-
 // --- init ---------------------------------------------------------------------
 
 for (const o of SCK_OPTIONS) {
@@ -176,6 +125,7 @@ showTab();
 
 programmer.subscribe(renderProgrammer);
 initBootstrap();
+initTarget();
 
 if (!('usb' in navigator)) {
   $('unsupported').hidden = false;
@@ -199,4 +149,3 @@ if (!('usb' in navigator)) {
 btnConnect.onclick = connectProgrammer;
 btnDisconnect.onclick = disconnectProgrammer;
 btnReboot.onclick = rebootProgrammer;
-btnReadTarget.onclick = readTarget;

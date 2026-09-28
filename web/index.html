@@ -47,7 +47,7 @@
             <label>SCK
               <select id="sck"></select>
             </label>
-            <button id="btn-read-target">Read signature and fuses</button>
+            <button id="btn-read-target">Identify target</button>
           </div>
           <label id="manual-reset-row" class="hint" hidden>
             <input type="checkbox" id="manual-reset" /> I'll hold the target's reset myself (PB5 is left alone)
@@ -57,6 +57,35 @@
             (use 187.5 kHz or less), 128 kHz clocked targets need 16 kHz or less.
           </p>
           <div id="target"></div>
+
+          <div id="target-ops" hidden>
+            <h3>Flash</h3>
+            <div class="row">
+              <button id="btn-flash-read" class="secondary">Read to file</button>
+              <label class="button">Write .hex file…<input type="file" id="file-flash-write" accept=".hex,.ihex,.ihx" hidden /></label>
+              <label class="button secondary">Verify against .hex…<input type="file" id="file-flash-verify" accept=".hex,.ihex,.ihx" hidden /></label>
+              <button id="btn-erase" class="secondary">Chip erase</button>
+            </div>
+            <p class="hint">Writing erases the chip first, then writes and verifies.</p>
+
+            <h3>EEPROM</h3>
+            <div class="row">
+              <button id="btn-ee-read" class="secondary">Read to file</button>
+              <label class="button secondary" id="ee-write-label">Write .hex file…<input type="file" id="file-ee-write" accept=".hex,.eep,.ihex" hidden /></label>
+            </div>
+
+            <h3>Fuses and lock bits</h3>
+            <div id="fuse-editor"></div>
+            <div class="row">
+              <button id="btn-fuses-write" disabled>Write fuses</button>
+              <button id="btn-lock-write" class="secondary" disabled>Write lock bits</button>
+              <button id="btn-fuses-reset" class="secondary" disabled>Undo changes</button>
+            </div>
+          </div>
+
+          <progress id="target-progress" max="1" value="0" hidden></progress>
+          <ol id="target-steps" class="checklist"></ol>
+          <div id="target-status"></div>
         </section>
       </div>
 

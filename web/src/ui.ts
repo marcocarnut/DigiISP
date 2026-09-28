@@ -86,3 +86,43 @@ export async function chooseProgrammer(): Promise<boolean> {
   programmer.set(await UsbAsp.open(device, log));
   return true;
 }
+
+// --- checklist ----------------------------------------------------------------
+
+/** A list of actions, each marked running, done or failed. */
+export class Checklist {
+  constructor(private readonly el: HTMLElement) {}
+
+  clear() {
+    this.el.innerHTML = '';
+  }
+
+  async run<T>(label: string, action: () => Promise<T>, detail?: (r: T) => string): Promise<T> {
+    const li = document.createElement('li');
+    li.className = 'running';
+    li.textContent = label;
+    this.el.append(li);
+    try {
+      const r = await action();
+      li.className = 'done';
+      if (detail) li.insertAdjacentHTML('beforeend', ` <span class="hint">${esc(detail(r))}</span>`);
+      return r;
+    } catch (e) {
+      li.className = 'failed';
+      li.insertAdjacentHTML('beforeend', ` <span class="hint">${esc(errorText(e))}</span>`);
+      throw e;
+    }
+  }
+
+  note(text: string, cls = 'note') {
+    const li = document.createElement('li');
+    li.className = cls;
+    li.textContent = text;
+    this.el.append(li);
+  }
+}
+
+/** Replace an element's content with a banner (html is trusted markup). */
+export function status(el: HTMLElement, html: string, cls = '') {
+  el.innerHTML = html ? `<p class="banner ${cls}">${html}</p>` : '';
+}

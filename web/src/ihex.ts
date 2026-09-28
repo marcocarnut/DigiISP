@@ -51,3 +51,26 @@ export function parseIntelHex(text: string, size: number): MemoryImage {
   }
   return img;
 }
+
+/** Intel HEX text for data at address 0, 16 bytes per record. Trailing 0xFF
+ * bytes (erased memory) are left out; addresses past 64 KB use type 04. */
+export function toIntelHex(data: Uint8Array): string {
+  let end = data.length;
+  while (end > 0 && data[end - 1] === 0xff) end--;
+  const lines: string[] = [];
+  const record = (type: number, addr: number, bytes: ArrayLike<number>) => {
+    const rec = [bytes.length, (addr >> 8) & 0xff, addr & 0xff, type, ...Array.from(bytes)];
+    const sum = (0x100 - (rec.reduce((a, b) => a + b, 0) & 0xff)) & 0xff;
+    lines.push(':' + [...rec, sum].map((b) => b.toString(16).toUpperCase().padStart(2, '0')).join(''));
+  };
+  let upper = 0;
+  for (let a = 0; a < end; a += 16) {
+    if (a >> 16 !== upper) {
+      upper = a >> 16;
+      record(0x04, 0, [upper >> 8, upper & 0xff]);
+    }
+    record(0x00, a & 0xffff, data.subarray(a, Math.min(a + 16, end)));
+  }
+  record(0x01, 0, []);
+  return lines.join('\n') + '\n';
+}

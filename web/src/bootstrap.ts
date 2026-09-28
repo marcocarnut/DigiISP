@@ -4,49 +4,11 @@
 import { chipErase, hex2, readFlash, readTargetInfo, writeFlash, writeFuse } from './avr';
 import { DIGISPARK_FUSES, digiIspApplication, fullImage, T85 } from './images';
 import { Micronucleus } from './micronucleus';
-import { $, ask, chooseProgrammer, chooserCancelled, errorText, esc, log, programmer } from './ui';
+import { $, ask, Checklist, chooseProgrammer, chooserCancelled, errorText, esc, log, programmer, status } from './ui';
 import type { UsbAsp } from './usbasp';
 
 const SCK_187K = 9; // safe for a factory fresh ATtiny85 at 1 MHz
 
-// --- checklist ----------------------------------------------------------------
-
-/** A list of actions, each marked running, done or failed. */
-class Checklist {
-  constructor(private readonly el: HTMLElement) {}
-
-  clear() {
-    this.el.innerHTML = '';
-  }
-
-  async run<T>(label: string, action: () => Promise<T>, detail?: (r: T) => string): Promise<T> {
-    const li = document.createElement('li');
-    li.className = 'running';
-    li.textContent = label;
-    this.el.append(li);
-    try {
-      const r = await action();
-      li.className = 'done';
-      if (detail) li.insertAdjacentHTML('beforeend', ` <span class="hint">${esc(detail(r))}</span>`);
-      return r;
-    } catch (e) {
-      li.className = 'failed';
-      li.insertAdjacentHTML('beforeend', ` <span class="hint">${esc(errorText(e))}</span>`);
-      throw e;
-    }
-  }
-
-  note(text: string, cls = 'note') {
-    const li = document.createElement('li');
-    li.className = cls;
-    li.textContent = text;
-    this.el.append(li);
-  }
-}
-
-function status(el: HTMLElement, html: string, cls = '') {
-  el.innerHTML = html ? `<p class="banner ${cls}">${html}</p>` : '';
-}
 
 // --- step 1: DigiISP over Micronucleus ---------------------------------------
 

@@ -1,6 +1,8 @@
 // AVR ISP helpers: signature lookup, fuse reading and decoding.
 // A full part database (generated from avrdude.conf) comes in Phase 4.
 
+import type { MemoryImage } from './ihex';
+import { decodeOp, encodeOp, fuseMemories, type Part } from './parts';
 import type { UsbAsp } from './usbasp';
 
 const SIGNATURES: Record<string, string> = {
@@ -120,12 +122,14 @@ export async function chipErase(p: UsbAsp): Promise<void> {
 
 type Progress = (fraction: number) => void;
 
-/** Write every page that isn't blank. Assumes a chip erase before. */
+/** Write every page that isn't blank. Assumes a chip erase before.
+ * pageSize 0: unpaged flash (old parts), written byte by byte in blocks. */
 export async function writeFlash(p: UsbAsp, image: Uint8Array, pageSize: number, progress: Progress): Promise<void> {
-  for (let a = 0; a < image.length; a += pageSize) {
-    const page = image.slice(a, a + pageSize);
+  const step = pageSize || 64;
+  for (let a = 0; a < image.length; a += step) {
+    const page = image.slice(a, a + step);
     if (page.some((b) => b !== 0xff)) await p.writeFlashPage(a, page, pageSize);
-    progress((a + pageSize) / image.length);
+    progress(Math.min(a + step, image.length) / image.length);
   }
 }
 
@@ -150,4 +154,69 @@ export async function writeFuse(p: UsbAsp, which: keyof typeof FUSE_WRITE, value
   await p.spi([a, b, 0x00, value]);
   await sleep(10); // tWD_FUSE is 4.5 ms
   await waitReady(p);
+}
+
+// --- part database driven operations ----------------------------------------------
+
+/** Signature bytes; the command is the same on every ISP part. */
+export async function readSignature(p: UsbAsp): Promise<Uint8Array> {
+  const sig = new Uint8Array(3);
+  for (let i = 0; i < 3; i++) sig[i] = (await p.spi([0x30, 0x00, i, 0x00]))[3];
+  return sig;
+}
+
+export async function readMemory(p: UsbAsp, part: Part, mem: string, address = 0): Promise<number> {
+  const op = part.mems[mem]?.read;
+  if (!op) throw new Error(`${part.name} can't read ${mem} over ISP`);
+  return decodeOp(op, await p.spi(encodeOp(op, address)));
+}
+
+export async function writeMemory(p: UsbAsp, part: Part, mem: string, value: number): Promise<void> {
+  const m = part.mems[mem];
+  if (!m?.write) throw new Error(`${part.name} can't write ${mem} over ISP`);
+  await p.spi(encodeOp(m.write, 0, value));
+  await sleep(Math.ceil((m.delay ?? 10000) / 1000) + 1);
+}
+
+/** Fuse bytes and lock bits the part has, by memory name. */
+export async function readConfig(p: UsbAsp, part: Part): Promise<Record<string, number>> {
+  const out: Record<string, number> = {};
+  for (const mem of [...fuseMemories(part), 'lock']) {
+    if (part.mems[mem]?.read) out[mem] = await readMemory(p, part, mem);
+  }
+  return out;
+}
+
+/** Chip erase with the part's erase time (old parts can't report busy). */
+export async function chipErasePart(p: UsbAsp, part: Part): Promise<void> {
+  await p.spi([0xac, 0x80, 0x00, 0x00]);
+  await sleep(Math.ceil(part.chipEraseDelay / 1000) + 5);
+}
+
+export async function readEeprom(p: UsbAsp, size: number, progress: Progress): Promise<Uint8Array> {
+  const out = new Uint8Array(size);
+  const block = 128;
+  for (let a = 0; a < size; a += block) {
+    out.set(await p.readEeprom(a, Math.min(block, size - a)), a);
+    progress(Math.min(a + block, size) / size);
+  }
+  return out;
+}
+
+/** Write the bytes the image sets that differ from what the EEPROM holds. */
+export async function writeEeprom(p: UsbAsp, part: Part, image: MemoryImage, progress: Progress): Promise<number> {
+  const ee = part.eeprom;
+  if (!ee?.write) throw new Error(`${part.name} has no EEPROM to write over ISP`);
+  const current = await readEeprom(p, ee.size, (f) => progress(f * 0.2));
+  const todo: number[] = [];
+  for (let a = 0; a < Math.min(image.end, ee.size); a++) {
+    if (image.used[a] && image.data[a] !== current[a]) todo.push(a);
+  }
+  const wait = Math.ceil((ee.delay ?? 10000) / 1000) + 1;
+  for (let i = 0; i < todo.length; i++) {
+    await p.spi(encodeOp(ee.write, todo[i], image.data[todo[i]]));
+    await sleep(wait);
+    progress(0.2 + (0.8 * (i + 1)) / todo.length);
+  }
+  return todo.length;
 }

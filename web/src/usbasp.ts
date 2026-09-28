@@ -34,6 +34,8 @@ export class UsbAsp {
   /** Capabilities bitmap, 0 if GETCAPABILITIES is not supported. */
   capabilities = 0;
   info: DigiIspInfo | null = null;
+  /** After SETLONGADDRESS the firmware ignores 16 bit addresses until CONNECT. */
+  private longAddressing = false;
 
   private constructor(
     readonly device: USBDevice,
@@ -152,6 +154,7 @@ export class UsbAsp {
 
   /** manualReset (DigiISP only): don't drive the target reset, the user holds it. */
   async connect(manualReset = false): Promise<void> {
+    this.longAddressing = false;
     await this.controlIn(Func.Connect, [manualReset ? DIGIISP_CONNECT_MANUAL_RESET : 0], 4);
   }
 
@@ -165,20 +168,45 @@ export class UsbAsp {
     return r.length >= 1 && r[0] === 0;
   }
 
-  /** Read flash (addresses below 64 KB), at most 254 bytes per request. */
-  async readFlash(address: number, length: number): Promise<Uint8Array> {
-    const r = await this.controlIn(Func.ReadFlash, [address & 0xff, address >> 8], length);
-    if (r.length !== length) throw new UsbAspError(`short flash read at 0x${address.toString(16)}`);
+  /** Set a 32 bit address for the following block reads and writes, which
+   * then ignore their own 16 bit address (for flash beyond 64 KB). CONNECT
+   * switches back to 16 bit addresses. */
+  async setLongAddress(address: number): Promise<void> {
+    this.longAddressing = true;
+    await this.controlIn(Func.SetLongAddress, [address & 0xff, (address >> 8) & 0xff, (address >> 16) & 0xff, address >>> 24], 4);
+  }
+
+  /** Read a block of flash or EEPROM, at most 254 bytes. */
+  private async readBlock(func: Func, address: number, length: number): Promise<Uint8Array> {
+    if (address > 0xffff || this.longAddressing) await this.setLongAddress(address);
+    const r = await this.controlIn(func, [address & 0xff, (address >> 8) & 0xff], length);
+    if (r.length !== length) throw new UsbAspError(`short read at 0x${address.toString(16)}`);
     return r;
   }
 
-  /** Load and write one flash page. The firmware polls until the write is done. */
-  async writeFlashPage(address: number, data: Uint8Array<ArrayBuffer>, pageSize: number): Promise<void> {
-    await this.controlOut(
-      Func.WriteFlash,
-      [address & 0xff, address >> 8, pageSize & 0xff, ((pageSize >> 8) << 4) | BLOCKFLAG_FIRST | BLOCKFLAG_LAST],
-      data,
-    );
+  readFlash(address: number, length: number): Promise<Uint8Array> {
+    return this.readBlock(Func.ReadFlash, address, length);
+  }
+
+  readEeprom(address: number, length: number): Promise<Uint8Array> {
+    return this.readBlock(Func.ReadEeprom, address, length);
+  }
+
+  /** Load and write one flash page (pageSize 0: unpaged flash, byte by byte).
+   * The firmware waits for or polls the write. */
+  async writeFlashPage(address: number, data: Uint8Array, pageSize: number): Promise<void> {
+    const block = 128; // one control transfer; pages of 256 bytes take two
+    for (let off = 0; off < data.length; off += block) {
+      const chunk = data.slice(off, Math.min(off + block, data.length));
+      const a = address + off;
+      const flags = (off === 0 ? BLOCKFLAG_FIRST : 0) | (off + block >= data.length ? BLOCKFLAG_LAST : 0);
+      if (a > 0xffff || this.longAddressing) await this.setLongAddress(a);
+      await this.controlOut(
+        Func.WriteFlash,
+        [a & 0xff, (a >> 8) & 0xff, pageSize & 0xff, ((pageSize >> 8) << 4) | flags],
+        chunk,
+      );
+    }
   }
 
   /** One 4 byte ISP instruction; returns the 4 bytes shifted back. */
