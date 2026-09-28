@@ -2,6 +2,8 @@
 // USBasp firmware (www.fischl.de) and its clones.
 
 import {
+  BLOCKFLAG_FIRST,
+  BLOCKFLAG_LAST,
   CAP_DIGIISP_EXTENSIONS,
   DIGIISP_CONNECT_MANUAL_RESET,
   DIGIISP_FLAG_RESET_CONTROL,
@@ -43,13 +45,6 @@ export class UsbAsp {
   static async permitted(): Promise<USBDevice[]> {
     const devices = await navigator.usb.getDevices();
     return devices.filter((d) => d.vendorId === USB_VID && d.productId === USB_PID);
-  }
-
-  static async request(log: TransferLogger): Promise<UsbAsp> {
-    const device = await navigator.usb.requestDevice({
-      filters: [{ vendorId: USB_VID, productId: USB_PID }],
-    });
-    return UsbAsp.open(device, log);
   }
 
   static async open(device: USBDevice, log: TransferLogger): Promise<UsbAsp> {
@@ -168,6 +163,22 @@ export class UsbAsp {
   async enableProgramming(): Promise<boolean> {
     const r = await this.controlIn(Func.EnableProg, [], 4);
     return r.length >= 1 && r[0] === 0;
+  }
+
+  /** Read flash (addresses below 64 KB), at most 254 bytes per request. */
+  async readFlash(address: number, length: number): Promise<Uint8Array> {
+    const r = await this.controlIn(Func.ReadFlash, [address & 0xff, address >> 8], length);
+    if (r.length !== length) throw new UsbAspError(`short flash read at 0x${address.toString(16)}`);
+    return r;
+  }
+
+  /** Load and write one flash page. The firmware polls until the write is done. */
+  async writeFlashPage(address: number, data: Uint8Array<ArrayBuffer>, pageSize: number): Promise<void> {
+    await this.controlOut(
+      Func.WriteFlash,
+      [address & 0xff, address >> 8, pageSize & 0xff, ((pageSize >> 8) << 4) | BLOCKFLAG_FIRST | BLOCKFLAG_LAST],
+      data,
+    );
   }
 
   /** One 4 byte ISP instruction; returns the 4 bytes shifted back. */

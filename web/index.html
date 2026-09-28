@@ -10,6 +10,10 @@
     <header>
       <h1>DigiISP</h1>
       <p class="sub">AVR ISP programming from the browser, for DigiISP and USBasp programmers</p>
+      <nav>
+        <a href="#programmer">Programmer</a>
+        <a href="#bootstrap">Bootstrap</a>
+      </nav>
     </header>
 
     <main>
@@ -17,40 +21,110 @@
         This browser has no WebUSB. Use Chrome, Edge or another Chromium based browser.
       </p>
 
-      <section>
-        <h2>Programmer</h2>
+      <div id="prompt" class="banner prompt" hidden>
+        <p id="prompt-text"></p>
         <div class="row">
-          <button id="btn-connect">Connect programmer…</button>
-          <button id="btn-disconnect" class="secondary" hidden>Disconnect</button>
-          <button id="btn-reboot" class="secondary" hidden title="Reset into the Micronucleus bootloader for a firmware update">Reboot to bootloader</button>
+          <button id="btn-prompt-ok">Continue</button>
+          <button id="btn-prompt-cancel" class="secondary">Cancel</button>
         </div>
-        <div id="programmer"></div>
-      </section>
+      </div>
 
-      <section id="target-section" hidden>
-        <h2>Target</h2>
-        <div class="row">
-          <label>SCK
-            <select id="sck"></select>
-          </label>
-          <button id="btn-read-target">Read signature and fuses</button>
-        </div>
-        <label id="manual-reset-row" class="hint" hidden>
-          <input type="checkbox" id="manual-reset" /> I'll hold the target's reset myself (PB5 is left alone)
-        </label>
-        <p class="hint">
-          SCK must be below a quarter of the target's clock: factory fresh AVRs run at 1 MHz
-          (use 187.5 kHz or less), 128 kHz clocked targets need 16 kHz or less.
-        </p>
-        <div id="prompt" class="banner prompt" hidden>
-          <p id="prompt-text"></p>
+      <!-- Programmer tab -->
+      <div id="tab-programmer">
+        <section>
+          <h2>Programmer</h2>
           <div class="row">
-            <button id="btn-prompt-ok">Continue</button>
-            <button id="btn-prompt-cancel" class="secondary">Cancel</button>
+            <button id="btn-connect">Connect programmer…</button>
+            <button id="btn-disconnect" class="secondary" hidden>Disconnect</button>
+            <button id="btn-reboot" class="secondary" hidden title="Reset into the Micronucleus bootloader for a firmware update">Reboot to bootloader</button>
           </div>
-        </div>
-        <div id="target"></div>
-      </section>
+          <div id="programmer"></div>
+        </section>
+
+        <section id="target-section" hidden>
+          <h2>Target</h2>
+          <div class="row">
+            <label>SCK
+              <select id="sck"></select>
+            </label>
+            <button id="btn-read-target">Read signature and fuses</button>
+          </div>
+          <label id="manual-reset-row" class="hint" hidden>
+            <input type="checkbox" id="manual-reset" /> I'll hold the target's reset myself (PB5 is left alone)
+          </label>
+          <p class="hint">
+            SCK must be below a quarter of the target's clock: factory fresh AVRs run at 1 MHz
+            (use 187.5 kHz or less), 128 kHz clocked targets need 16 kHz or less.
+          </p>
+          <div id="target"></div>
+        </section>
+      </div>
+
+      <!-- Bootstrap tab -->
+      <div id="tab-bootstrap" hidden>
+        <section>
+          <h2>Make programmers out of ATtiny85 boards</h2>
+          <p>
+            A Digispark or Franzininho has enough free pins for ISP only if its own RESET pin becomes an
+            I/O pin (to drive the target's reset), and that takes a programmer. Two steps and two boards
+            solve that: the first board gets DigiISP over USB and, while you hold the second board's
+            RESET button, turns the second board into a complete programmer.
+          </p>
+        </section>
+
+        <section class="step">
+          <h2><span class="step-no">1</span> Install DigiISP on the first board</h2>
+          <p class="hint">Over USB, through the Micronucleus bootloader the board comes with. No wiring.</p>
+          <ol class="howto">
+            <li>Unplug the board.</li>
+            <li>Click <b>Upload DigiISP</b>; the device picker opens.</li>
+            <li>Plug the board in. It appears in the picker as an unknown device (16d0:0753):
+              select it and click <b>Connect</b> within about 5 seconds, before the bootloader gives up.</li>
+          </ol>
+          <div class="row">
+            <button id="btn-step1">Upload DigiISP…</button>
+          </div>
+          <progress id="step1-progress" max="1" value="0" hidden></progress>
+          <ol id="step1-steps" class="checklist"></ol>
+          <div id="step1-status"></div>
+        </section>
+
+        <section class="step">
+          <h2><span class="step-no">2</span> Turn the second board into a programmer</h2>
+          <p class="hint">
+            The first board writes Micronucleus and DigiISP to the second board over ISP, verifies them, and
+            only then sets the fuses that turn its RESET pin into I/O. You hold the second board's RESET
+            meanwhile, about 15 seconds.
+          </p>
+          <table class="wiring">
+            <tr><th>First board (DigiISP, in USB)</th><th></th><th>Second board</th></tr>
+            <tr><td>P1 (MOSI)</td><td>→</td><td>P0</td></tr>
+            <tr><td>P0 (MISO)</td><td>←</td><td>P1</td></tr>
+            <tr><td>P2 (SCK)</td><td>→</td><td>P2</td></tr>
+            <tr><td>5V, GND</td><td>–</td><td>5V, GND</td></tr>
+          </table>
+          <p class="hint">
+            Only the first board goes into USB. Hold the second board's RESET with its button (Franzininho)
+            or a jumper from P5 to GND (Digispark). On the Franzininho, RESET is the header pin marked 4.
+          </p>
+          <div id="step2-programmer"></div>
+          <label class="option">
+            <input type="checkbox" id="step2-rstdisbl" checked />
+            Turn the second board's RESET pin into I/O (high fuse 0x5D), so it can work as a programmer.
+            Afterwards only Micronucleus (or a high voltage programmer) can update it.
+          </label>
+          <label class="option" id="step2-wired-row" hidden>
+            <input type="checkbox" id="step2-wired" />
+            The first board's P5 is wired to the second board's RESET (no button to hold)
+          </label>
+          <div class="row">
+            <button id="btn-step2" disabled>Program the second board</button>
+          </div>
+          <progress id="step2-progress" max="1" value="0" hidden></progress>
+          <ol id="step2-steps" class="checklist"></ol>
+          <div id="step2-status"></div>
+        </section>
+      </div>
 
       <section>
         <details>

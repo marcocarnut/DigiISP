@@ -81,7 +81,17 @@ Original plan:
 - **Test:** #1 reads #2's signature (1E 93 0B) and fuses. Nothing is written.
 - **Cross-check:** `avrdude -c usbasp-clone -p t85 -U hfuse:r:-:h` while holding reset.
 
-### Phase 3: bootstrap
+### Phase 3: bootstrap (in progress)
+Built as the page's **Bootstrap** tab (two labelled steps):
+1. DigiISP onto the first board over WebUSB through its Micronucleus
+   (port of the upstream uploader: reset vector patching, page writes).
+2. The first board writes a complete image to the second one over ISP while
+   the user holds its RESET: chip erase, Micronucleus 2.6 `t85_default` at
+   0x1A00 plus DigiISP laid out as a Micronucleus upload leaves it, verify,
+   then fuses E1/FE and high 0x5D last. Nothing after the erase is fatal
+   until the high fuse is written, because the reset pin still works.
+
+Original plan:
 - Flash the DigiISP firmware onto #2 with Micronucleus while its reset still
   works, and check that it enumerates and reports "no reset control".
 - Wizard: checklist (Micronucleus enters on power-up, target is a t25/45/85),

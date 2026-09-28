@@ -185,3 +185,121 @@ pre#log {
   white-space: pre-wrap;
   word-break: break-all;
 }
+
+nav {
+  display: flex;
+  gap: 0.25rem;
+  margin-top: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+nav a {
+  padding: 0.4rem 0.9rem;
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+nav a.active {
+  color: var(--fg);
+  border-bottom-color: var(--accent);
+}
+
+#prompt {
+  position: sticky;
+  top: 0.5rem;
+  z-index: 1;
+}
+
+.step h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.step-no {
+  display: inline-grid;
+  place-items: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: 1rem;
+}
+
+ol.howto {
+  padding-left: 1.3rem;
+}
+
+label.option {
+  display: block;
+  margin: 0.5rem 0;
+}
+
+table.wiring {
+  width: auto;
+}
+
+table.wiring td,
+table.wiring th {
+  padding-right: 1.2rem;
+}
+
+progress {
+  width: 100%;
+  margin-top: 0.75rem;
+  accent-color: var(--accent);
+}
+
+ol.checklist {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0;
+}
+
+ol.checklist li {
+  padding: 0.15rem 0 0.15rem 1.6rem;
+  position: relative;
+}
+
+ol.checklist li::before {
+  position: absolute;
+  left: 0.2rem;
+  width: 1rem;
+  text-align: center;
+}
+
+ol.checklist li.running::before {
+  content: '…';
+  color: var(--muted);
+}
+
+ol.checklist li.done::before {
+  content: '✓';
+  color: var(--ok);
+}
+
+ol.checklist li.failed::before {
+  content: '✗';
+  color: var(--danger);
+}
+
+ol.checklist li.note::before {
+  content: '·';
+  color: var(--muted);
+}
+
+ol.checklist li.release {
+  font-weight: 600;
+}
+
+ol.checklist li.release::before {
+  content: '↑';
+  color: var(--accent);
+}
+
+.ok-banner {
+  background: color-mix(in srgb, var(--ok) 12%, transparent);
+}

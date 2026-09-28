@@ -97,3 +97,57 @@ export function describeFuse(value: number, bits: FuseBit[]): { bit: FuseBit; te
     return { bit, text: String(field >> shift), programmed: false };
   });
 }
+
+// --- programming ---------------------------------------------------------
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Poll RDY/BSY until the target is idle (timeout in ms). */
+export async function waitReady(p: UsbAsp, timeout = 100): Promise<void> {
+  const until = performance.now() + timeout;
+  for (;;) {
+    if (((await p.spi([0xf0, 0x00, 0x00, 0x00]))[3] & 1) === 0) return;
+    if (performance.now() > until) throw new Error('target stays busy');
+    await sleep(2);
+  }
+}
+
+export async function chipErase(p: UsbAsp): Promise<void> {
+  await p.spi([0xac, 0x80, 0x00, 0x00]);
+  await sleep(10); // tWD_ERASE is 4.5 ms on the ATtiny25/45/85
+  await waitReady(p);
+}
+
+type Progress = (fraction: number) => void;
+
+/** Write every page that isn't blank. Assumes a chip erase before. */
+export async function writeFlash(p: UsbAsp, image: Uint8Array, pageSize: number, progress: Progress): Promise<void> {
+  for (let a = 0; a < image.length; a += pageSize) {
+    const page = image.slice(a, a + pageSize);
+    if (page.some((b) => b !== 0xff)) await p.writeFlashPage(a, page, pageSize);
+    progress((a + pageSize) / image.length);
+  }
+}
+
+export async function readFlash(p: UsbAsp, size: number, progress: Progress): Promise<Uint8Array> {
+  const out = new Uint8Array(size);
+  const block = 128;
+  for (let a = 0; a < size; a += block) {
+    out.set(await p.readFlash(a, Math.min(block, size - a)), a);
+    progress(Math.min(a + block, size) / size);
+  }
+  return out;
+}
+
+const FUSE_WRITE: Record<keyof Omit<Fuses, 'lock'>, [number, number]> = {
+  low: [0xac, 0xa0],
+  high: [0xac, 0xa8],
+  extended: [0xac, 0xa4],
+};
+
+export async function writeFuse(p: UsbAsp, which: keyof typeof FUSE_WRITE, value: number): Promise<void> {
+  const [a, b] = FUSE_WRITE[which];
+  await p.spi([a, b, 0x00, value]);
+  await sleep(10); // tWD_FUSE is 4.5 ms
+  await waitReady(p);
+}

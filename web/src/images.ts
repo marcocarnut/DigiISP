@@ -1,0 +1,35 @@
+// Firmware images bundled with the app: DigiISP, and Micronucleus for
+// complete images written over ISP.
+
+import digiIspHex from '../../firmware/digiisp.hex?raw';
+import micronucleusHex from '../../firmware/bootloader/micronucleus-2.6-t85_default.hex?raw';
+import { parseIntelHex } from './ihex';
+import { layoutApplication } from './micronucleus';
+
+/** ATtiny85 with Micronucleus 2.x t85_default. */
+export const T85 = {
+  signature: [0x1e, 0x93, 0x0b],
+  flashSize: 8192,
+  pageSize: 64,
+  bootloaderStart: 0x1a00,
+  appSize: 0x1a00 - 6, // minus Micronucleus' postscript
+} as const;
+
+/** Digispark fuses; hfuse 0xDD keeps reset, 0x5D turns PB5 into I/O. */
+export const DIGISPARK_FUSES = { low: 0xe1, extended: 0xfe, highReset: 0xdd, highNoReset: 0x5d } as const;
+
+export function digiIspApplication() {
+  return parseIntelHex(digiIspHex, T85.flashSize);
+}
+
+/** Micronucleus plus DigiISP, laid out as a Micronucleus upload would leave it. */
+export function fullImage(): Uint8Array {
+  const boot = parseIntelHex(micronucleusHex, T85.flashSize);
+  if (boot.used.subarray(0, T85.bootloaderStart).some((u) => u)) {
+    throw new Error('bundled Micronucleus has data below 0x1A00');
+  }
+  const image = new Uint8Array(T85.flashSize).fill(0xff);
+  image.set(layoutApplication(digiIspApplication(), T85.appSize, T85.bootloaderStart));
+  image.set(boot.data.subarray(T85.bootloaderStart), T85.bootloaderStart);
+  return image;
+}

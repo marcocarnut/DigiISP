@@ -1,10 +1,9 @@
 import { describeFuse, Fuses, hex2, partName, readTargetInfo, TINYx5_FUSES } from './avr';
+import { initBootstrap } from './bootstrap';
 import { CAP_TPI, SCK_OPTIONS, USB_PID, USB_VID } from './protocol';
+import { $, ask, chooseProgrammer, esc, log, programmer, showError } from './ui';
 import { UsbAsp } from './usbasp';
 
-const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
-
-const logEl = $<HTMLPreElement>('log');
 const programmerEl = $('programmer');
 const targetEl = $('target');
 const targetSection = $('target-section');
@@ -15,43 +14,17 @@ const btnReadTarget = $<HTMLButtonElement>('btn-read-target');
 const sckSelect = $<HTMLSelectElement>('sck');
 const manualResetBox = $<HTMLInputElement>('manual-reset');
 
-let programmer: UsbAsp | null = null;
+// --- tabs -----------------------------------------------------------------
 
-function log(line: string) {
-  logEl.textContent += line + '\n';
-  logEl.scrollTop = logEl.scrollHeight;
-}
+const TABS = ['programmer', 'bootstrap'] as const;
 
-function esc(s: string): string {
-  return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
-}
-
-function showError(el: HTMLElement, e: unknown) {
-  const msg = e instanceof Error ? e.message : String(e);
-  log(`error: ${msg}`);
-  let hint = '';
-  if (e instanceof DOMException && e.name === 'SecurityError') {
-    hint = ' On Linux, install udev/60-digiisp.rules and replug the device.';
+function showTab() {
+  const name = location.hash.slice(1);
+  const tab = (TABS as readonly string[]).includes(name) ? name : 'programmer';
+  for (const t of TABS) {
+    $(`tab-${t}`).hidden = t !== tab;
+    document.querySelector(`nav a[href="#${t}"]`)?.classList.toggle('active', t === tab);
   }
-  el.innerHTML = `<p class="banner error">${esc(msg)}${hint}</p>`;
-}
-
-// --- prompt for manual steps ----------------------------------------------
-
-function ask(text: string): Promise<boolean> {
-  const box = $('prompt');
-  $('prompt-text').textContent = text;
-  box.hidden = false;
-  return new Promise((resolve) => {
-    const done = (ok: boolean) => {
-      box.hidden = true;
-      $('btn-prompt-ok').onclick = null;
-      $('btn-prompt-cancel').onclick = null;
-      resolve(ok);
-    };
-    $('btn-prompt-ok').onclick = () => done(true);
-    $('btn-prompt-cancel').onclick = () => done(false);
-  });
 }
 
 // --- rendering --------------------------------------------------------------
@@ -70,7 +43,17 @@ function fuseTables(f: Fuses): string {
     <div><h3>lock bits <span class="mono">${hex2(f.lock)}</span></h3></div></div>`;
 }
 
-function renderProgrammer(p: UsbAsp) {
+function renderProgrammer(p: UsbAsp | null) {
+  btnConnect.hidden = !!p;
+  btnDisconnect.hidden = !p;
+  btnReboot.hidden = p?.kind !== 'digiisp';
+  targetSection.hidden = !p;
+  targetEl.innerHTML = '';
+  if (!p) {
+    programmerEl.innerHTML = '';
+    return;
+  }
+  $('manual-reset-row').hidden = !(p.info?.resetControl ?? false);
   const d = p.device;
   const kinds = { digiisp: 'DigiISP', usbasp: 'USBasp', unknown: 'unknown (speaks USBasp?)' };
   const rows: [string, string][] = [
@@ -97,43 +80,31 @@ function renderProgrammer(p: UsbAsp) {
 
 // --- actions ------------------------------------------------------------------
 
-function useProgrammer(p: UsbAsp) {
-  programmer = p;
-  log(`opened ${p.device.manufacturerName} / ${p.device.productName} ${p.device.serialNumber ?? ''}`);
-  renderProgrammer(p);
-  btnConnect.hidden = true;
-  btnDisconnect.hidden = false;
-  btnReboot.hidden = p.kind !== 'digiisp';
-  $('manual-reset-row').hidden = !(p.info?.resetControl ?? false);
-  targetSection.hidden = false;
-  targetEl.innerHTML = '';
-}
-
 async function connectProgrammer() {
   try {
-    useProgrammer(await UsbAsp.request(log));
+    await chooseProgrammer();
   } catch (e) {
-    if (e instanceof DOMException && e.name === 'NotFoundError') return; // chooser cancelled
     showError(programmerEl, e);
   }
 }
 
 /** Open a device we already have permission for, e.g. after a replug or reload. */
 async function autoConnect(device?: USBDevice) {
-  if (programmer) return;
+  if (programmer.get()) return;
   const candidates = device ? [device] : await UsbAsp.permitted();
   if (candidates.length !== 1) return;
   try {
-    useProgrammer(await UsbAsp.open(candidates[0], log));
+    programmer.set(await UsbAsp.open(candidates[0], log));
   } catch (e) {
     log(`auto-connect failed: ${e instanceof Error ? e.message : e}`);
   }
 }
 
 async function rebootProgrammer() {
-  if (!programmer) return;
+  const p = programmer.get();
+  if (!p) return;
   try {
-    await programmer.reboot();
+    await p.reboot();
     log('rebooting into bootloader');
   } catch (e) {
     showError(programmerEl, e);
@@ -141,22 +112,12 @@ async function rebootProgrammer() {
 }
 
 async function disconnectProgrammer() {
-  await programmer?.close();
-  forgetProgrammer();
-}
-
-function forgetProgrammer() {
-  programmer = null;
-  programmerEl.innerHTML = '';
-  targetEl.innerHTML = '';
-  targetSection.hidden = true;
-  btnConnect.hidden = false;
-  btnDisconnect.hidden = true;
-  btnReboot.hidden = true;
+  await programmer.get()?.close();
+  programmer.set(null);
 }
 
 async function readTarget() {
-  const p = programmer;
+  const p = programmer.get();
   if (!p) return;
   btnReadTarget.disabled = true;
   targetEl.innerHTML = '';
@@ -210,6 +171,12 @@ for (const o of SCK_OPTIONS) {
   sckSelect.add(opt);
 }
 
+window.addEventListener('hashchange', showTab);
+showTab();
+
+programmer.subscribe(renderProgrammer);
+initBootstrap();
+
 if (!('usb' in navigator)) {
   $('unsupported').hidden = false;
   btnConnect.disabled = true;
@@ -222,9 +189,9 @@ if (!('usb' in navigator)) {
   });
   void autoConnect();
   navigator.usb.addEventListener('disconnect', (ev) => {
-    if (programmer && ev.device === programmer.device) {
+    if (ev.device === programmer.get()?.device) {
       log('programmer unplugged');
-      forgetProgrammer();
+      programmer.set(null);
     }
   });
 }

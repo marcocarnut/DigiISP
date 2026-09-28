@@ -5,7 +5,10 @@
   "license": "GPL-2.0-only",
   "type": "module",
   "scripts": {
+    "firmware": "make -C ../firmware digiisp.hex",
+    "predev": "npm run firmware",
     "dev": "vite",
+    "prebuild": "npm run firmware",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview"
   },
