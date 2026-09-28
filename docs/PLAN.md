@@ -117,13 +117,21 @@ Original plan:
 - DigiISP updates its own bootloader: an option to upgrade a board's
   Micronucleus (e.g. 1.x on new Digisparks to 2.6), the way Micronucleus's
   "upgrade" images do it.
-- Phone-friendly bootstrap (Chrome on Android has WebUSB over USB OTG):
-  collapsible steps, then wiring diagrams on the page.
-- Micronucleus uploader in the web app (vendor requests too), so firmware
-  updates need no command-line tools.
+- Firmware updates for DigiISP boards from the page (reboot into
+  Micronucleus, then the step 1 uploader), so no command-line tools are needed.
 - WebUSB landing page descriptor once the app is hosted (GitHub Pages, HTTPS).
 - TPI (ATtiny4/5/9/10) using the USBasp TPI requests.
 - UPDI (a single wire; tinyAVR 0/1/2, AVR Dx) as an extension.
+
+### Phase 6: UI overhaul
+Make it very beginner friendly (for students and hobbyists without a
+high-voltage programmer or command-line experience):
+- Graphical wiring diagrams on the page (bootstrap, and programmer to common
+  targets), matching the real boards' header labels (the Franzininho's RESET
+  on the pin marked 4).
+- Responsive layout that works on phones: Chrome on Android has WebUSB, with a
+  USB-C to USB-A OTG adapter for the board. To test on a real phone.
+- Plain-language steps and errors, and safe defaults throughout.
 
 ## Decisions
 
