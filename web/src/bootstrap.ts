@@ -3,7 +3,7 @@
 
 import { chipErase, hex2, readFlash, readTargetInfo, writeFlash, writeFuse } from './avr';
 import { DIGISPARK_FUSES, digiIspApplication, fullImage, T85 } from './images';
-import { layoutApplication, Micronucleus } from './micronucleus';
+import { Micronucleus } from './micronucleus';
 import { $, ask, chooseProgrammer, chooserCancelled, errorText, esc, log, programmer } from './ui';
 import type { UsbAsp } from './usbasp';
 
@@ -70,11 +70,12 @@ async function step1() {
     }
     const mn = m;
     const info = mn.info;
-    list.note(`Micronucleus ${info.version}: ${info.flashSize} bytes for the application, signature 1E ${hex2(info.signature[0]).slice(2)} ${hex2(info.signature[1]).slice(2)}`);
-    if (info.signature[0] !== T85.signature[1] || info.signature[1] !== T85.signature[2]) {
+    const sig = info.signature ? `, signature 1E ${hex2(info.signature[0]).slice(2)} ${hex2(info.signature[1]).slice(2)}` : '';
+    list.note(`Micronucleus ${info.version}: ${info.flashSize} bytes for the application${sig}`);
+    if (info.signature && (info.signature[0] !== T85.signature[1] || info.signature[1] !== T85.signature[2])) {
       throw new Error('This board is not an ATtiny85; DigiISP is built for the ATtiny85.');
     }
-    const image = layoutApplication(app, info.flashSize, info.bootloaderStart);
+    const image = mn.prepare(app);
     bar.hidden = false;
     bar.value = 0;
     await list.run('Erase application', () => mn.erase());
@@ -85,8 +86,11 @@ async function step1() {
       'so Chrome asks for permission once: click <b>Connect programmer</b> in step 2 and pick DigiISP.', 'ok-banner');
   } catch (e) {
     log(`step 1: ${errorText(e)}`);
-    status(statusEl, esc(errorText(e)) +
-      ' The bootloader gives up about 6 s after the board is plugged in; unplug it and try again.', 'error');
+    // USB transfer errors usually mean the bootloader timed out and left
+    const timeout = e instanceof DOMException
+      ? ' The bootloader gives up about 5 s after the board is plugged in; unplug it and try again.'
+      : '';
+    status(statusEl, esc(errorText(e)) + timeout, 'error');
     await m?.close();
   } finally {
     btn.disabled = false;

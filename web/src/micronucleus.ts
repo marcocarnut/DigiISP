@@ -1,5 +1,6 @@
-// Micronucleus v2 bootloader client over WebUSB, following the upstream
-// command line tool (commandline/library/micronucleus_lib.c).
+// Micronucleus bootloader client over WebUSB, following the upstream
+// command line tool (commandline/library/micronucleus_lib.c). Speaks v2 and
+// v1 (which new Digisparks still ship with).
 
 import type { MemoryImage } from './ihex';
 
@@ -14,6 +15,9 @@ const CMD_RUN = 4;
 
 export interface MicronucleusInfo {
   version: string;
+  major: number;
+  /** bcdDevice low byte, e.g. 6 for v1.06 */
+  minor: number;
   /** Bytes available to the application (bootloader start minus postscript). */
   flashSize: number;
   pageSize: number;
@@ -22,8 +26,8 @@ export interface MicronucleusInfo {
   /** ms to wait after writing a page / erasing. */
   writeSleep: number;
   eraseSleep: number;
-  /** Signature bytes 2 and 3 (e.g. 0x93 0x0B for the ATtiny85). */
-  signature: [number, number];
+  /** Signature bytes 2 and 3 (e.g. 0x93 0x0B for the ATtiny85); v1 doesn't report them. */
+  signature: [number, number] | null;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -38,7 +42,7 @@ const rjmp = (from: number, to: number) => 0xc000 | ((to - from - 1) & 0x0fff);
  * when it exits. Returns bootloaderStart bytes. The OSCCAL byte at
  * bootloaderStart - 6 stays 0xFF (the bootloader fills it when it writes).
  */
-export function layoutApplication(app: MemoryImage, flashSize: number, bootloaderStart: number): Uint8Array {
+export function layoutApplication(app: MemoryImage, flashSize: number, bootloaderStart: number): Uint8Array<ArrayBuffer> {
   if (bootloaderStart > 0x2000) throw new Error('only devices up to 8 KB are supported');
   if (app.end > flashSize) {
     throw new Error(`firmware is ${app.end} bytes, only ${flashSize} fit next to the bootloader`);
@@ -79,15 +83,19 @@ export class Micronucleus {
     await device.open();
     if (device.configuration === null) await device.selectConfiguration(1);
     await device.claimInterface(0);
-    if (device.deviceVersionMajor < 2) {
+    // bcdDevice is major.minor as two bytes; WebUSB splits the minor byte in nibbles
+    const major = device.deviceVersionMajor;
+    const minor = (device.deviceVersionMinor << 4) | device.deviceVersionSubminor;
+    const version = `${major}.${minor.toString().padStart(2, '0')}`;
+    if (major < 1 || major > 2) {
       await device.close();
-      throw new Error(`Micronucleus ${device.deviceVersionMajor}.${device.deviceVersionMinor} is too old, v2 is needed`);
+      throw new Error(`Micronucleus ${version} is not supported`);
     }
     const r = await device.controlTransferIn(
       { requestType: 'vendor', recipient: 'device', request: CMD_INFO, value: 0, index: 0 },
-      8,
+      major >= 2 ? 8 : 4,
     );
-    if (r.status !== 'ok' || !r.data || r.data.byteLength < 6) {
+    if (r.status !== 'ok' || !r.data || r.data.byteLength < (major >= 2 ? 6 : 4)) {
       await device.close();
       throw new Error('Micronucleus did not answer the info request, replug the board and try again');
     }
@@ -95,15 +103,18 @@ export class Micronucleus {
     const flashSize = (b[0] << 8) | b[1];
     const pageSize = b[2];
     const pages = Math.ceil(flashSize / pageSize);
-    const writeSleep = (b[3] & 0x7f) + 2; // the tool adds 2 ms unless in fast mode
+    // v2: the tool adds 2 ms unless in fast mode
+    const writeSleep = (b[3] & 0x7f) + (major >= 2 ? 2 : 0);
     const info: MicronucleusInfo = {
-      version: `${device.deviceVersionMajor}.${device.deviceVersionMinor}`,
+      version,
+      major,
+      minor,
       flashSize,
       pageSize,
       bootloaderStart: pages * pageSize,
       writeSleep,
       eraseSleep: b[3] & 0x80 ? (writeSleep * pages) / 4 : writeSleep * pages,
-      signature: [b[4], b[5]],
+      signature: major >= 2 ? [b[4], b[5]] : null,
     };
     return new Micronucleus(device, info);
   }
@@ -122,17 +133,41 @@ export class Micronucleus {
     await sleep(this.info.eraseSleep);
   }
 
-  /** Write an image laid out by layoutApplication(). */
-  async write(image: Uint8Array, progress: (fraction: number) => void): Promise<void> {
-    const { flashSize, pageSize, bootloaderStart, writeSleep } = this.info;
+  /** The flash image to write for an application: v2 needs the host to
+   * relocate the reset vector, v1 bootloaders do that themselves. */
+  prepare(app: MemoryImage): Uint8Array<ArrayBuffer> {
+    const { flashSize, bootloaderStart } = this.info;
+    if (this.info.major >= 2) return layoutApplication(app, flashSize, bootloaderStart);
+    if (app.end > flashSize) {
+      throw new Error(`firmware is ${app.end} bytes, only ${flashSize} fit next to this bootloader`);
+    }
+    const out = new Uint8Array(bootloaderStart).fill(0xff);
+    out.set(app.data.subarray(0, app.end));
+    return out;
+  }
+
+  /** Write an image made by prepare(). */
+  async write(image: Uint8Array<ArrayBuffer>, progress: (fraction: number) => void): Promise<void> {
+    const { flashSize, pageSize, bootloaderStart, writeSleep, major, minor } = this.info;
     for (let address = 0; address < flashSize; address += pageSize) {
-      const page = image.subarray(address, address + pageSize);
       const last = address >= bootloaderStart - pageSize;
+      let length = pageSize;
+      // like the upstream tool: v1.00-1.02 want a short last page
+      if (major === 1 && minor <= 2 && last) length = flashSize % pageSize || pageSize;
+      const page = image.slice(address, address + length);
       // page 0 carries the reset vector, the last page the application's entry jump
       if (address === 0 || last || page.some((x) => x !== 0xff)) {
-        await this.out(CMD_TRANSFER_PAGE, pageSize, address);
-        for (let i = 0; i < pageSize; i += 4) {
-          await this.out(CMD_WRITE_DATA, page[i] | (page[i + 1] << 8), page[i + 2] | (page[i + 3] << 8));
+        if (major >= 2) {
+          await this.out(CMD_TRANSFER_PAGE, length, address);
+          for (let i = 0; i < length; i += 4) {
+            await this.out(CMD_WRITE_DATA, page[i] | (page[i + 1] << 8), page[i + 2] | (page[i + 3] << 8));
+          }
+        } else {
+          const r = await this.device.controlTransferOut(
+            { requestType: 'vendor', recipient: 'device', request: CMD_TRANSFER_PAGE, value: length, index: address },
+            page,
+          );
+          if (r.status !== 'ok') throw new Error(`Micronucleus page write at 0x${address.toString(16)} failed: ${r.status}`);
         }
         await sleep(writeSleep);
       }
