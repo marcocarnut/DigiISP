@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DigiISP wiring</title>
+  </head>
+  <body>
+    <header>
+      <h1>DigiISP wiring</h1>
+      <p class="sub">Spike: wiring diagrams for programmer and target boards</p>
+    </header>
+    <main>
+      <section>
+        <div class="row wiring-controls">
+          <label>Programmer <select id="sel-programmer"></select></label>
+          <label>Target <select id="sel-target"></select></label>
+          <label>Layout
+            <select id="sel-orientation">
+              <option value="auto">auto</option>
+              <option value="horizontal">side by side</option>
+              <option value="vertical">stacked</option>
+            </select>
+          </label>
+          <label>Highlight
+            <select id="sel-highlight">
+              <option value="">none</option>
+              <option>MOSI</option><option>MISO</option><option>SCK</option>
+              <option>RESET</option><option>VCC</option><option>GND</option>
+            </select>
+          </label>
+        </div>
+        <div id="diagram"></div>
+        <ul id="wiring-notes" class="wiring-notes"></ul>
+        <ol id="wiring-list" class="wiring-list"></ol>
+      </section>
+    </main>
+    <script type="module" src="./src/wiring/spike.ts"></script>
+  </body>
+</html>

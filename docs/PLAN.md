@@ -141,6 +141,18 @@ Original plan:
 - UPDI (a single wire; tinyAVR 0/1/2, AVR Dx) as an extension.
 
 ### Phase 6: UI overhaul
+Round 1 done (2026-09-28): Devices tab, collapsible sections, centered
+modal prompts, fuse editor usable at phone width.
+
+Round 2 in progress: wiring diagrams. A spike page (`web/wiring.html`)
+draws programmer and target as SVG top views, placed side by side or stacked
+depending on the screen, turned so their ISP pins face each other, with
+colored jumper wires. Boards: Digispark, Franzininho, Uno, Nano, Pro, Pro
+Mini, Pro Micro, bare DIP-8 ATtiny, generic 6-pin header, USBasp 10-pin.
+Sources: docs/BOARDS.md. Next: integrate into the Devices tab (choose the
+target before Identify, check the signature against it) and Bootstrap step 2;
+generate bare chip pinouts from Microchip ATDF files.
+
 Make it very beginner friendly (for students and hobbyists without a
 high-voltage programmer or command-line experience):
 - Graphical wiring diagrams on the page (bootstrap, and programmer to common
