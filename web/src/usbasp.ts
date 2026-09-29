@@ -21,6 +21,8 @@ export interface DigiIspInfo {
   resetControl: boolean;
   osccal: number;
   fuses: { low: number; high: number; extended: number; lock: number };
+  /** Micronucleus version found in the board's flash (firmware v4+), else null */
+  bootloader: { major: number; minor: number } | null;
 }
 
 export type TransferLogger = (line: string) => void;
@@ -122,13 +124,14 @@ export class UsbAsp {
     }
     if (this.capabilities & CAP_DIGIISP_EXTENSIONS) {
       const d = await this.controlIn(Func.DigiIspInfo, [], DIGIISP_INFO_LEN);
-      if (d.length === DIGIISP_INFO_LEN && d[0] === 0x44 && d[1] === 0x49) {
+      if (d.length >= 10 && d[0] === 0x44 && d[1] === 0x49) {
         this.info = {
           protocolVersion: d[2],
           firmwareVersion: d[3],
           resetControl: (d[4] & DIGIISP_FLAG_RESET_CONTROL) !== 0,
           osccal: d[5],
           fuses: { low: d[6], high: d[7], extended: d[8], lock: d[9] },
+          bootloader: d.length >= 12 && d[10] ? { major: d[10], minor: d[11] } : null,
         };
       }
     }

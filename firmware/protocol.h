@@ -50,10 +50,10 @@
 #define DIGIISP_FUNC_MS_OS_20       0x4D    /* IN, wIndex 7: MS OS 2.0 set */
 
 /* DIGIISP_FUNC_INFO reply layout */
-#define DIGIISP_INFO_LEN            10
+#define DIGIISP_INFO_LEN            12    /* 10 before v4 */
 #define DIGIISP_MAGIC0              'D'
 #define DIGIISP_MAGIC1              'I'
 #define DIGIISP_PROTOCOL_VERSION    1
-#define DIGIISP_FW_VERSION          3
+#define DIGIISP_FW_VERSION          4
 
 #endif /* __protocol_h_included__ */

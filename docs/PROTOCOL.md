@@ -80,7 +80,7 @@ avrdude only looks at bits 0 and 24.
 
 | # | Name | Dir | Reply |
 |---|---|---|---|
-| 0x40 | INFO | IN | 10 bytes: `'D' 'I'`, protocol version, firmware version, flags (bit 0 = reset control), OSCCAL, own low fuse, own high fuse, own extended fuse, own lock bits |
+| 0x40 | INFO | IN | 12 bytes (10 before firmware v4): `'D' 'I'`, protocol version, firmware version, flags (bit 0 = reset control), OSCCAL, own low fuse, own high fuse, own extended fuse, own lock bits, then the board's Micronucleus version major and minor (0 0 if not found; the firmware finds Micronucleus' USB device descriptor, VID 16d0 PID 0753, in flash and reads its bcdDevice) |
 | 0x41 | REBOOT | IN | – (about 50 ms later the device drops off the bus, and the watchdog resets it into Micronucleus) |
 | 0x42 | PINS | IN | 3 bytes: PINB, DDRB, PORTB (for diagnostics, e.g. whether the reset wire has the target's pull-up) |
 | 0x4D | MS OS 2.0 | IN, wIndex = 7 | the Microsoft OS 2.0 descriptor set (162 bytes: WinUSB compatible ID plus a DeviceInterfaceGUIDs property) |

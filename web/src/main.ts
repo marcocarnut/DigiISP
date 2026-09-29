@@ -17,6 +17,15 @@ const btnReboot = $<HTMLButtonElement>('btn-reboot');
 const btnFwUpdate = $<HTMLButtonElement>('btn-fw-update');
 /** A firmware update is running (the programmer is away in its bootloader meanwhile). */
 let fwBusy = false;
+/** The update's outcome is on screen (kept visible for a few seconds). */
+let fwNotice = false;
+
+/** Is the firmware older than the page's, or the bootloader older than 2.6? */
+function needsUpdate(p: UsbAsp | null): boolean {
+  if (p?.kind !== 'digiisp' || !p.info) return false;
+  const b = p.info.bootloader;
+  return p.info.firmwareVersion < FIRMWARE_VERSION || (!!b && (b.major < 2 || (b.major === 2 && b.minor < 6)));
+}
 const sckSelect = $<HTMLSelectElement>('sck');
 
 // --- tabs -----------------------------------------------------------------
@@ -49,12 +58,23 @@ function fuseTables(f: Fuses): string {
     <div><h3>${esc(t('fuse.lockbits'))} <span class="mono">${hex2(f.lock)}</span></h3></div></div>`;
 }
 
+function bootloaderText(b: { major: number; minor: number } | null): string {
+  if (!b) return esc(t('boot.unknown'));
+  const v = `${b.major}.${String(b.minor).padStart(2, '0')}`;
+  return b.major > 2 || (b.major === 2 && b.minor >= 6)
+    ? esc(t('boot.version', { v }))
+    : `<span class="danger">${esc(t('boot.version.old', { v }))}</span>`;
+}
+
 function renderProgrammer(p: UsbAsp | null) {
   btnConnect.hidden = !!p;
   btnDisconnect.hidden = !p;
   btnReboot.hidden = p?.kind !== 'digiisp';
-  btnFwUpdate.hidden = p?.kind !== 'digiisp';
-  $('fw-update').hidden = !(fwBusy || p?.kind === 'digiisp');
+  btnFwUpdate.hidden = !needsUpdate(p);
+  $('fw-update').hidden = !(fwBusy || fwNotice || needsUpdate(p));
+  // the upgrade option only matters when the bootloader is old or unknown
+  const bl = p?.info?.bootloader;
+  $('fw-upgrade-row').hidden = !!bl && (bl.major > 2 || (bl.major === 2 && bl.minor >= 6));
   targetSection.hidden = !p;
   if (!p) {
     programmerEl.innerHTML = '';
@@ -79,6 +99,7 @@ function renderProgrammer(p: UsbAsp | null) {
       [t('prog.row.reset'), i.resetControl
         ? `<span class="ok">${esc(t('prog.reset.driven'))}</span>`
         : esc(t('prog.reset.manual'))],
+      [t('prog.row.bootloader'), bootloaderText(i.bootloader)],
       ['OSCCAL', hex2(i.osccal)],
     );
     extra = `<h3>${esc(t('prog.ownFuses'))}</h3>${fuseTables(i.fuses)}`;
@@ -101,16 +122,28 @@ async function connectProgrammer() {
   }
 }
 
-/** Open a device we already have permission for, e.g. after a replug or reload. */
-async function autoConnect(device?: USBDevice) {
-  if (programmer.get()) return;
-  const candidates = device ? [device] : await UsbAsp.permitted();
-  if (candidates.length !== 1) return;
-  try {
-    programmer.set(await UsbAsp.open(candidates[0], log));
-  } catch (e) {
-    log(`auto-connect failed: ${e instanceof Error ? e.message : e}`);
+/** Open a device we already have permission for, e.g. after a replug or
+ * reload. A freshly plugged device may not open at once (seen on Android),
+ * so opening is retried a few times. Returns whether a programmer is open. */
+async function autoConnect(device?: USBDevice): Promise<boolean> {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (programmer.get()) return true;
+    const candidates = device ? [device] : await UsbAsp.permitted();
+    if (candidates.length !== 1) return false;
+    try {
+      programmer.set(await UsbAsp.open(candidates[0], log));
+      return true;
+    } catch (e) {
+      log(`auto-connect failed: ${e instanceof Error ? e.message : e}`);
+      try {
+        await candidates[0].close();
+      } catch {
+        // not open
+      }
+      await sleep(700);
+    }
   }
+  return false;
 }
 
 async function rebootProgrammer() {
@@ -152,6 +185,32 @@ async function updateFirmware() {
     }
     if (await installDigiIsp(m, $<HTMLInputElement>('fw-upgrade').checked, list, bar)) {
       status(statusEl, t('fw.done'), 'ok-banner');
+      // DigiISP comes back with the same serial: wait for it (the connect
+      // event may be missed, so also look for it every second)
+      let back = false;
+      for (let s = 0; s < 15 && !back; s++) {
+        await sleep(1000);
+        back = !!programmer.get() || (await autoConnect());
+      }
+      if (back) {
+        list.clear();
+        bar.hidden = true;
+        status(statusEl, esc(t('fw.reconnected')), 'ok-banner');
+        fwNotice = true;
+        setTimeout(() => {
+          fwNotice = false;
+          status(statusEl, '');
+          renderProgrammer(programmer.get());
+        }, 6000);
+      } else {
+        status(statusEl, t('fw.reconnectManual'), 'prompt');
+        fwNotice = true;
+        setTimeout(() => {
+          fwNotice = false;
+          status(statusEl, '');
+          renderProgrammer(programmer.get());
+        }, 30000);
+      }
     }
   } catch (e) {
     log(`firmware update: ${errorText(e)}`);
@@ -159,6 +218,7 @@ async function updateFirmware() {
   } finally {
     fwBusy = false;
     btnFwUpdate.disabled = false;
+    renderProgrammer(programmer.get());
   }
 }
 

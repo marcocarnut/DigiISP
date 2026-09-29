@@ -37,6 +37,7 @@ static uint8_t  prog_blockflags;
 static uint16_t prog_pagecounter;
 static uint8_t  prog_address_newmode;
 static uint8_t  rebootRequested;
+static uint16_t bootloaderVersion;
 
 /* ------------------------------------------------------------------------- */
 /* Descriptors                                                               */
@@ -288,6 +289,8 @@ usbMsgLen_t usbFunctionSetup(uchar data[8]) {
         replyBuffer[7] = boot_lock_fuse_bits_get(GET_HIGH_FUSE_BITS);
         replyBuffer[8] = boot_lock_fuse_bits_get(GET_EXTENDED_FUSE_BITS);
         replyBuffer[9] = boot_lock_fuse_bits_get(GET_LOCK_BITS);
+        replyBuffer[10] = bootloaderVersion >> 8;     /* Micronucleus major, 0: unknown */
+        replyBuffer[11] = bootloaderVersion;          /* minor */
         len = DIGIISP_INFO_LEN;
 
     } else if (data[1] == DIGIISP_FUNC_REBOOT) {
@@ -378,6 +381,19 @@ uchar usbFunctionWrite(uchar *data, uchar len) {
 
 /* ------------------------------------------------------------------------- */
 
+/* The bootloader's version: find Micronucleus' USB device descriptor
+ * (VID 16d0, PID 0753) in flash and take its bcdDevice. 0 if not found. */
+static uint16_t findBootloaderVersion(void) {
+    uint16_t a;
+
+    for (a = 0x1600; a < FLASHEND - 14; a++) {
+        if (pgm_read_byte(a) == 18 && pgm_read_byte(a + 1) == USBDESCR_DEVICE
+                && pgm_read_word(a + 8) == 0x16d0 && pgm_read_word(a + 10) == 0x0753)
+            return pgm_read_word(a + 12);
+    }
+    return 0;
+}
+
 /* Detach from USB and let the watchdog reset us into Micronucleus, which
  * starts on every reset (ENTRY_ALWAYS) and disables the watchdog. */
 static void reboot(void) {
@@ -400,6 +416,7 @@ int main(void) {
     ispInit();
     ispDisconnect();
     initSerial();
+    bootloaderVersion = findBootloaderVersion();
 
     usbInit();
     /* force re-enumeration after the bootloader */
