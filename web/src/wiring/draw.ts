@@ -2,6 +2,7 @@
 // stacked, turned so their ISP pins face each other, joined by jumper wires.
 
 import { SIGNALS, type Board, type Pin, type Shape, type Signal } from './boards';
+import { route } from './route';
 
 export type Orientation = 'horizontal' | 'vertical';
 
@@ -74,15 +75,15 @@ function place(board: Board, rot: Rot, dx = 0, dy = 0): Placed {
 /** Try all rotations of both boards and both sides, keep the layout with the
  * shortest wires. Turning a board costs in proportion to its size, so big
  * boards stay the way people usually hold them. */
-function layout(prog: Board, tgt: Board, links: Connection[], orientation: Orientation): [Placed, Placed] {
+function layouts(prog: Board, tgt: Board, links: Connection[], orientation: Orientation): { score: number; placed: [Placed, Placed] }[] {
   const rots: Rot[] = [0, 90, 180, 270];
-  let best: { score: number; placed: [Placed, Placed] } | null = null;
+  const all: { score: number; placed: [Placed, Placed] }[] = [];
   const horizontal = orientation === 'horizontal';
   const sizeOf = (b: Board) => {
     const e = extent(b);
     return Math.max(...e.map((p) => p[0])) - Math.min(...e.map((p) => p[0])) + Math.max(...e.map((p) => p[1])) - Math.min(...e.map((p) => p[1]));
   };
-  const turnCost = (b: Board, r: Rot) => (r ? (b.upright ? 1e6 : 0.12 * sizeOf(b)) : 0);
+  const turnCost = (b: Board, r: Rot) => (r ? (b.upright ? 1e6 : 0.25 * sizeOf(b)) : 0);
   for (const swap of [false, true]) {
     // first board goes left (or on top); the programmer normally
     const [firstB, secondB] = swap ? [tgt, prog] : [prog, tgt];
@@ -92,12 +93,26 @@ function layout(prog: Board, tgt: Board, links: Connection[], orientation: Orien
       for (const r2 of rots) {
         const a = place(firstB, r1);
         const b0 = place(secondB, r2);
-        const mean = (pl: Placed, pins: Pin[], axis: 0 | 1) =>
-          pins.reduce((s, p) => s + pl.at([p.x, p.y])[axis], 0) / Math.max(pins.length, 1);
-        // line the pin groups up across the gap
+        // slide the second board along the gap so that the most wires run
+        // straight across; ties go to the smallest total offset
+        const axis = horizontal ? 1 : 0;
+        const va = firstPins.map((p) => a.at([p.x, p.y])[axis]);
+        const vb = secondPins.map((p) => b0.at([p.x, p.y])[axis]);
+        let shift = 0;
+        let bestFit = -Infinity;
+        for (let i = 0; i < va.length; i++) {
+          const d = va[i] - vb[i];
+          const straight = va.filter((v, j) => Math.abs(v - vb[j] - d) < 0.05).length;
+          const spread = va.reduce((s, v, j) => s + Math.abs(v - vb[j] - d), 0);
+          const fit = straight * 1000 - spread;
+          if (fit > bestFit) {
+            bestFit = fit;
+            shift = d;
+          }
+        }
         const b = horizontal
-          ? place(secondB, r2, a.box.x1 + GAP, mean(a, firstPins, 1) - mean(b0, secondPins, 1))
-          : place(secondB, r2, mean(a, firstPins, 0) - mean(b0, secondPins, 0), a.box.y1 + GAP);
+          ? place(secondB, r2, a.box.x1 + GAP, shift)
+          : place(secondB, r2, shift, a.box.y1 + GAP);
         let score = turnCost(firstB, r1) + turnCost(secondB, r2) + (swap ? 1 : 0);
         firstPins.forEach((p, i) => {
           const [ax, ay] = a.at([p.x, p.y]);
@@ -106,11 +121,11 @@ function layout(prog: Board, tgt: Board, links: Connection[], orientation: Orien
           // pins far from the edge facing the other board mean wires across the board
           score += horizontal ? (a.box.x1 - ax) + (bx - b.box.x0) : (a.box.y1 - ay) + (by - b.box.y0);
         });
-        if (!best || score < best.score) best = { score, placed: swap ? [b, a] : [a, b] };
+        all.push({ score, placed: swap ? [b, a] : [a, b] });
       }
     }
   }
-  return best!.placed;
+  return all.sort((x, y) => x.score - y.score);
 }
 
 // --- drawing --------------------------------------------------------------------
@@ -153,7 +168,12 @@ function text(x: number, y: number, s: string, cls: string, anchor = 'middle') {
 const SIDE: Record<NonNullable<Pin['side']>, Pt> = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
 
 /** The board itself, and its text (drawn later, on top of the wires). k scales text for big drawings. */
-function boardSvg(pl: Placed, role: 'programmer' | 'target', used: Set<Pin>, k: number, highlight?: Signal): [string, string] {
+/** Does the axis-aligned segment p-q pass through the box? */
+function segHitsBox(p: Pt, q: Pt, x0: number, y0: number, x1: number, y1: number): boolean {
+  return Math.max(p[0], q[0]) >= x0 && Math.min(p[0], q[0]) <= x1 && Math.max(p[1], q[1]) >= y0 && Math.min(p[1], q[1]) <= y1;
+}
+
+function boardSvg(pl: Placed, role: 'programmer' | 'target', used: Set<Pin>, k: number, wirePaths: Pt[][], highlight?: Signal): [string, string] {
   const b = pl.board;
   const g = `<g transform="translate(${f(pl.dx)} ${f(pl.dy)}) rotate(${pl.rot})">`;
   const outline = `<polygon class="wd-pcb" style="fill:${b.color}" points="${b.outline.map((p) => p.join(',')).join(' ')}"/>`;
@@ -179,8 +199,13 @@ function boardSvg(pl: Placed, role: 'programmer' | 'target', used: Set<Pin>, k: 
     const [x, y] = pl.at([s.x + s.w / 2, s.y + s.h / 2]);
     labels += text(x, y, s.label, s.kind === 'header' ? 'wd-shape-label wd-header-label' : 'wd-shape-label');
   }
-  const [nx, ny] = [(pl.box.x0 + pl.box.x1) / 2, pl.box.y0 - 1.5 - 1.5 * k];
-  labels += text(nx, ny, b.name, 'wd-name');
+  // the name goes above the board, or below it if a wire runs through that spot
+  const nx = (pl.box.x0 + pl.box.x1) / 2;
+  const half = (b.name.length * 0.6 * 2.4 * k) / 2;
+  const clear = (y: number) => !wirePaths.some((path) => path.some((q, i) => i > 0 && segHitsBox(path[i - 1], q, nx - half, y - 1.5 * k, nx + half, y + 1.5 * k)));
+  const above = pl.box.y0 - 1.5 - 1.5 * k;
+  const below = pl.box.y1 + 1.5 + 1.5 * k;
+  labels += text(nx, clear(above) || !clear(below) ? above : below, b.name, 'wd-name');
   return [`${g}${outline}${shapes}${pins}</g>`, labels];
 }
 
@@ -189,49 +214,71 @@ export interface Diagram {
   links: Connection[];
   /** signals the target needs that the boards can't connect */
   missing: Signal[];
+  /** wire crossings left in the drawing */
+  crossings: number;
 }
 
 export function drawWiring(prog: Board, tgt: Board, orientation: Orientation, highlight?: Signal): Diagram {
   const links = connections(prog, tgt);
   const missing = SIGNALS.filter((s) => !links.some((l) => l.signal === s));
-  const [a, b] = layout(prog, tgt, links, orientation);
   const horizontal = orientation === 'horizontal';
-  // text and wires grow with the drawing, so they stay readable when it is scaled down
-  const size = Math.max(a.box.x1, b.box.x1) - Math.min(a.box.x0, b.box.x0);
-  const k = Math.min(Math.max(size / 100, 1), 2.4);
+  const scale = (a: Placed, b: Placed) => {
+    // text and wires grow with the drawing, so they stay readable when it is scaled down
+    const size = Math.max(a.box.x1, b.box.x1) - Math.min(a.box.x0, b.box.x0);
+    return Math.min(Math.max(size / 100, 1), 2.4);
+  };
 
-  // jumper wires: leave each pin towards the other board, then curve across
+  // route the most promising layouts; a crossing costs as much as 25 mm of wire
+  let best: { cost: number; a: Placed; b: Placed; k: number; paths: Pt[][]; crossings: number } | null = null;
+  for (const cand of layouts(prog, tgt, links, orientation).slice(0, 12)) {
+    const [a, b] = cand.placed;
+    const k = scale(a, b);
+    const aFirst = horizontal ? a.box.x0 <= b.box.x0 : a.box.y0 <= b.box.y0;
+    const [first, second] = aFirst ? [a, b] : [b, a];
+    const pinsOf = (pl: Placed) => pl.board.pins.map((p) => pl.at([p.x, p.y]));
+    const ends = links.map((l) => {
+      const pa = a.at([l.from.x, l.from.y]);
+      const pb = b.at([l.to.x, l.to.y]);
+      return aFirst ? { a: pa, b: pb } : { a: pb, b: pa };
+    });
+    const r = route(ends, first.box, second.box, pinsOf(first), pinsOf(second), horizontal, k);
+    // paths run from the programmer to the target
+    const paths = aFirst ? r.paths : r.paths.map((p) => [...p].reverse());
+    const length = paths.reduce((s, p) => s + p.slice(1).reduce((t, q, i) => t + Math.abs(q[0] - p[i][0]) + Math.abs(q[1] - p[i][1]), 0), 0);
+    const cost = cand.score + 6 * r.crossings + 0.3 * length;
+    if (!best || cost < best.cost) best = { cost, a, b, k, paths, crossings: r.crossings };
+  }
+  const { a, b, k, paths, crossings } = best!;
+
   let wires = '';
   let tags = '';
-  const pts: Pt[] = [];
-  const placedTags: { x: number; y: number; w: number }[] = [];
+  const pts: Pt[] = paths.flat();
+  const placedTags: { x: number; y: number; w: number; h: number }[] = [];
   links.forEach((l, i) => {
-    const p0 = a.at([l.from.x, l.from.y]);
-    const p3 = b.at([l.to.x, l.to.y]);
-    const span = horizontal ? Math.abs(p3[0] - p0[0]) : Math.abs(p3[1] - p0[1]);
-    const reach = Math.max(8, span * 0.45);
-    // the programmer may sit on either side of the target
-    const s = horizontal ? Math.sign(b.box.x0 - a.box.x0) || 1 : Math.sign(b.box.y0 - a.box.y0) || 1;
-    const p1: Pt = horizontal ? [p0[0] + s * reach, p0[1]] : [p0[0], p0[1] + s * reach];
-    const p2: Pt = horizontal ? [p3[0] - s * reach, p3[1]] : [p3[0], p3[1] - s * reach];
-    const d = `M${f(p0[0])},${f(p0[1])} C${f(p1[0])},${f(p1[1])} ${f(p2[0])},${f(p2[1])} ${f(p3[0])},${f(p3[1])}`;
-    const cls = `wd-wire w-${l.signal}${highlight && l.signal !== highlight ? ' dim' : ''}${l.signal === highlight ? ' hl' : ''}`;
+    const path = paths[i];
+    const d = 'M' + path.map((p) => `${f(p[0])},${f(p[1])}`).join(' L');
+    const dim = highlight && l.signal !== highlight ? ' dim' : '';
+    const cls = `wd-wire w-${l.signal}${dim}${l.signal === highlight ? ' hl' : ''}`;
+    const p0 = path[0];
+    const p3 = path[path.length - 1];
     wires += `<path class="wd-wire-under" d="${d}"/><path class="${cls}" d="${d}"/>` +
       `<circle class="wd-end w-${l.signal}" cx="${f(p0[0])}" cy="${f(p0[1])}" r="0.9"/>` +
       `<circle class="wd-end w-${l.signal}" cx="${f(p3[0])}" cy="${f(p3[1])}" r="0.9"/>`;
-    // name tag on the wire: slide along it until it clears the tags placed so far
-    const bez = (u: number, q0: number, q1: number, q2: number, q3: number) =>
-      (1 - u) ** 3 * q0 + 3 * (1 - u) ** 2 * u * q1 + 3 * (1 - u) * u * u * q2 + u ** 3 * q3;
+
+    // name tag on the wire: longest segments first, sliding along each until
+    // it clears the tags placed so far
     const w = (l.signal.length * 1.05 + 1.6) * k;
-    const at = (u: number): Pt => [bez(u, p0[0], p1[0], p2[0], p3[0]), bez(u, p0[1], p1[1], p2[1], p3[1])];
-    const free = ([x, y]: Pt) => placedTags.every((q) => Math.abs(q.x - x) > (q.w + w) / 2 + 0.3 * k || Math.abs(q.y - y) > 2.8 * k);
-    const tries = [0.5, 0.42, 0.58, 0.34, 0.66, 0.28, 0.72];
-    const [tx, ty] = at(tries.find((u) => free(at(u))) ?? 0.5 + ((i % 2 ? 1 : -1) * (i + 1)) * 0.04);
-    placedTags.push({ x: tx, y: ty, w });
-    tags += `<g class="wd-tag w-${l.signal}${highlight && l.signal !== highlight ? ' dim' : ''}">` +
-      `<rect x="${f(tx - w / 2)}" y="${f(ty - 1.25 * k)}" width="${f(w)}" height="${f(2.5 * k)}" rx="${f(1.25 * k)}"/>` +
+    const h = 2.5 * k;
+    const segs = path.slice(1).map((q, j) => [path[j], q] as [Pt, Pt])
+      .sort((u, v) => Math.hypot(v[1][0] - v[0][0], v[1][1] - v[0][1]) - Math.hypot(u[1][0] - u[0][0], u[1][1] - u[0][1]));
+    const free = ([x, y]: Pt) => placedTags.every((q) => Math.abs(q.x - x) > (q.w + w) / 2 + 0.3 * k || Math.abs(q.y - y) > (q.h + h) / 2 + 0.3 * k);
+    const tries = [0.5, 0.35, 0.65, 0.2, 0.8, 0.1, 0.9];
+    const spots = segs.flatMap(([s0, s1]) => tries.map((t): Pt => [s0[0] + (s1[0] - s0[0]) * t, s0[1] + (s1[1] - s0[1]) * t]));
+    const [tx, ty] = spots.find(free) ?? spots[0];
+    placedTags.push({ x: tx, y: ty, w, h });
+    tags += `<g class="wd-tag w-${l.signal}${dim}">` +
+      `<rect x="${f(tx - w / 2)}" y="${f(ty - h / 2)}" width="${f(w)}" height="${f(h)}" rx="${f(h / 2)}"/>` +
       text(tx, ty, l.signal, 'wd-tag-text') + '</g>';
-    pts.push(p0, p1, p2, p3);
   });
 
   const used = new Set(links.flatMap((l) => [l.from, l.to]));
@@ -239,17 +286,17 @@ export function drawWiring(prog: Board, tgt: Board, orientation: Orientation, hi
   const nameHalf = (pl: Placed) => pl.board.name.length * 0.6 * 2.4 * k / 2;
   for (const pl of [a, b]) {
     const cx = (pl.box.x0 + pl.box.x1) / 2;
-    pts.push([cx - nameHalf(pl), pl.box.y0], [cx + nameHalf(pl), pl.box.y0]);
+    pts.push([cx - nameHalf(pl), pl.box.y0 - 3 * k], [cx + nameHalf(pl), pl.box.y1 + 3 * k]);
   }
   const x0 = Math.min(a.box.x0, b.box.x0, ...pts.map((p) => p[0])) - 10 * k;
-  const y0 = Math.min(a.box.y0, b.box.y0, ...pts.map((p) => p[1])) - 5 * k;
+  const y0 = Math.min(a.box.y0, b.box.y0, ...pts.map((p) => p[1])) - 3 * k;
   const x1 = Math.max(a.box.x1, b.box.x1, ...pts.map((p) => p[0])) + 10 * k;
   const y1 = Math.max(a.box.y1, b.box.y1, ...pts.map((p) => p[1])) + 3 * k;
-  const [aShapes, aText] = boardSvg(a, 'programmer', used, k, highlight);
-  const [bShapes, bText] = boardSvg(b, 'target', used, k, highlight);
+  const [aShapes, aText] = boardSvg(a, 'programmer', used, k, paths, highlight);
+  const [bShapes, bText] = boardSvg(b, 'target', used, k, paths, highlight);
   const svg =
     `<svg class="wiring" xmlns="http://www.w3.org/2000/svg" viewBox="${f(x0)} ${f(y0)} ${f(x1 - x0)} ${f(y1 - y0)}" role="img" ` +
     `aria-label="Wiring from ${esc(prog.name)} to ${esc(tgt.name)}" style="--k:${f(k)}">` +
     aShapes + bShapes + wires + aText + bText + tags + '</svg>';
-  return { svg, links, missing };
+  return { svg, links, missing, crossings };
 }

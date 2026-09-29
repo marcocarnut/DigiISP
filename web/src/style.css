@@ -533,8 +533,8 @@ svg.wiring text {
 .wd-header-label { font-size: calc(1.1px * var(--k)); fill: var(--wd-silk); }
 .wd-name { font-size: calc(2.4px * var(--k)); font-weight: 600; fill: var(--fg); }
 
-.wd-wire-under { fill: none; stroke: var(--wd-under); stroke-width: calc(1.7px * var(--k)); stroke-linecap: round; opacity: 0.9; }
-.wd-wire { fill: none; stroke-width: calc(1px * var(--k)); stroke-linecap: round; }
+.wd-wire-under { fill: none; stroke: var(--wd-under); stroke-width: calc(1.7px * var(--k)); stroke-linecap: round; stroke-linejoin: round; opacity: 0.9; }
+.wd-wire { fill: none; stroke-width: calc(1px * var(--k)); stroke-linecap: round; stroke-linejoin: round; }
 .wd-wire.hl { stroke-width: calc(1.5px * var(--k)); }
 .wd-wire.dim, .wd-tag.dim { opacity: 0.2; }
 .wd-tag rect { stroke: var(--wd-under); stroke-width: 0.25; }
