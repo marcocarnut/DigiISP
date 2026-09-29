@@ -44,6 +44,18 @@
 
         <section id="target-section" hidden>
           <h2>Target</h2>
+          <div class="row wiring-controls">
+            <label id="prog-board-row">Your programmer
+              <select id="sel-prog-board"></select>
+            </label>
+            <label>What are you programming?
+              <select id="sel-target-board"></select>
+            </label>
+          </div>
+          <details class="section" id="wiring-section" open>
+            <summary><h3>Wiring</h3></summary>
+            <div id="wiring"></div>
+          </details>
           <div class="row">
             <label>SCK
               <select id="sck"></select>
@@ -129,17 +141,16 @@
             only then sets the fuses that turn its RESET pin into I/O. You hold the second board's RESET
             meanwhile, about 15 seconds.
           </p>
-          <table class="wiring">
-            <tr><th>First board (DigiISP, in USB)</th><th></th><th>Second board</th></tr>
-            <tr><td>P1 (MOSI)</td><td>→</td><td>P0</td></tr>
-            <tr><td>P0 (MISO)</td><td>←</td><td>P1</td></tr>
-            <tr><td>P2 (SCK)</td><td>→</td><td>P2</td></tr>
-            <tr><td>5V, GND</td><td>–</td><td>5V, GND</td></tr>
-          </table>
-          <p class="hint">
-            Only the first board goes into USB. Hold the second board's RESET with its button (Franzininho)
-            or a jumper from P5 to GND (Digispark). On the Franzininho, RESET is the header pin marked 4.
-          </p>
+          <div class="row wiring-controls">
+            <label>First board (DigiISP, in USB)
+              <select id="sel-first-board"></select>
+            </label>
+            <label>Second board
+              <select id="sel-second-board"></select>
+            </label>
+          </div>
+          <div id="step2-wiring"></div>
+          <p class="hint">Only the first board goes into USB.</p>
           <div id="step2-programmer"></div>
           <label class="option">
             <input type="checkbox" id="step2-rstdisbl" checked />

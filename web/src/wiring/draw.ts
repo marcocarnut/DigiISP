@@ -218,9 +218,10 @@ export interface Diagram {
   crossings: number;
 }
 
-export function drawWiring(prog: Board, tgt: Board, orientation: Orientation, highlight?: Signal): Diagram {
-  const links = connections(prog, tgt);
-  const missing = SIGNALS.filter((s) => !links.some((l) => l.signal === s));
+/** omit: signals not wired (e.g. RESET when the user holds the target's reset button) */
+export function drawWiring(prog: Board, tgt: Board, orientation: Orientation, highlight?: Signal, omit: Signal[] = []): Diagram {
+  const links = connections(prog, tgt).filter((l) => !omit.includes(l.signal));
+  const missing = SIGNALS.filter((s) => !omit.includes(s) && !links.some((l) => l.signal === s));
   const horizontal = orientation === 'horizontal';
   const scale = (a: Placed, b: Placed) => {
     // text and wires grow with the drawing, so they stay readable when it is scaled down

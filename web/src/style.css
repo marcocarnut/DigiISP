@@ -583,3 +583,16 @@ svg.wiring text {
 .wiring-list .sig.w-RESET { background: var(--w-reset); }
 .wiring-list .sig.w-VCC { background: var(--w-vcc); }
 .wiring-list .sig.w-GND { background: var(--w-gnd); color: var(--bg); }
+
+.warn-banner {
+  background: var(--prompt-bg);
+  border: 1px solid var(--prompt-border);
+}
+
+#wiring-section {
+  margin: 0.5rem 0 1rem;
+}
+
+.wiring-controls {
+  align-items: flex-end;
+}

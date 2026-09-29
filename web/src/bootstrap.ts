@@ -6,6 +6,7 @@ import { DIGISPARK_FUSES, digiIspApplication, fullImage, T85 } from './images';
 import { Micronucleus } from './micronucleus';
 import { $, ask, Checklist, chooseProgrammer, chooserCancelled, errorText, esc, log, programmer, status } from './ui';
 import type { UsbAsp } from './usbasp';
+import { boardOptions, keepDrawn, remembered, renderWiring } from './wiring/widget';
 
 const SCK_187K = 9; // safe for a factory fresh ATtiny85 at 1 MHz
 
@@ -198,7 +199,40 @@ function goToStep(n: number) {
   document.querySelector(`#tab-bootstrap section.step[data-step="${n}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+// --- step 2 wiring ------------------------------------------------------------------
+
+function drawStep2Wiring() {
+  const p = programmer.get();
+  const wired = !!p?.info?.resetControl && $<HTMLInputElement>('step2-wired').checked;
+  const second = $<HTMLSelectElement>('sel-second-board').value;
+  const hold = second === 'franzininho' ? 'press and hold its RESET button' : 'connect its P5 to GND with a jumper';
+  renderWiring($('step2-wiring'), $<HTMLSelectElement>('sel-first-board').value, second, {
+    omit: wired ? [] : ['RESET'],
+    notes: wired ? [] : [`No RESET wire: when the page asks, hold the second board in reset: ${hold}.`],
+  });
+}
+
+function setupStep2Boards() {
+  const first = $<HTMLSelectElement>('sel-first-board');
+  const second = $<HTMLSelectElement>('sel-second-board');
+  boardOptions(first, 'programmer', ['digispark', 'franzininho']);
+  boardOptions(second, 'target', ['digispark', 'franzininho']);
+  second.value = 'franzininho';
+  first.onchange = () => {
+    remembered.setProgrammerBoard(programmer.get()?.device.serialNumber, first.value);
+    drawStep2Wiring();
+  };
+  second.onchange = drawStep2Wiring;
+  $<HTMLInputElement>('step2-wired').addEventListener('change', drawStep2Wiring);
+  programmer.subscribe((p) => {
+    first.value = remembered.programmerBoard(p?.device.serialNumber) ?? 'digispark';
+    drawStep2Wiring();
+  });
+  keepDrawn(drawStep2Wiring);
+}
+
 export function initBootstrap() {
+  setupStep2Boards();
   // a collapsed step opens again when its title is clicked
   document.querySelectorAll<HTMLElement>('#tab-bootstrap section.step h2').forEach((h) => {
     h.onclick = () => h.parentElement!.classList.remove('collapsed');

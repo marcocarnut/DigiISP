@@ -149,9 +149,13 @@ draws programmer and target as SVG top views, placed side by side or stacked
 depending on the screen, turned so their ISP pins face each other, with
 colored jumper wires. Boards: Digispark, Franzininho, Uno, Nano, Pro, Pro
 Mini, Pro Micro, bare DIP-8 ATtiny, generic 6-pin header, USBasp 10-pin.
-Sources: docs/BOARDS.md. Next: integrate into the Devices tab (choose the
-target before Identify, check the signature against it) and Bootstrap step 2;
-generate bare chip pinouts from Microchip ATDF files.
+Wires are routed orthogonally in lanes, with crossings minimized.
+Sources: docs/BOARDS.md. Integrated (2026-09-29): the Devices tab asks for the
+programmer board (remembered per DigiISP serial) and the target board
+(remembered), shows the wiring before Identify, leaves out the RESET wire when
+it is held by hand, and warns when the chip found doesn't match the board.
+Bootstrap step 2 shows the same diagram. wiring.html remains as a gallery of
+all combinations. Next: bare chip pinouts from Microchip ATDF files.
 
 Make it very beginner friendly (for students and hobbyists without a
 high-voltage programmer or command-line experience):

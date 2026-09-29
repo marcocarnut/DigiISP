@@ -2,7 +2,7 @@
 
 import '../style.css';
 import { BOARDS, boardById, type Signal } from './boards';
-import { drawWiring, type Orientation } from './draw';
+import { keepDrawn, renderWiring } from './widget';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const selProg = $<HTMLSelectElement>('sel-programmer');
@@ -29,23 +29,12 @@ function toHash() {
   history.replaceState(null, '', '#' + parts.join('/'));
 }
 
-function orientation(): Orientation {
-  if (selOrient.value === 'horizontal' || selOrient.value === 'vertical') return selOrient.value;
-  // portrait screens stack the boards
-  return window.innerWidth < 640 || window.innerWidth < window.innerHeight ? 'vertical' : 'horizontal';
-}
-
 function render() {
-  const prog = boardById(selProg.value)!;
-  const tgt = boardById(selTgt.value)!;
-  const { svg, links, missing } = drawWiring(prog, tgt, orientation(), (selHl.value || undefined) as Signal | undefined);
-  $('diagram').innerHTML = svg;
-  $('wiring-notes').innerHTML = [...prog.notes, ...tgt.notes]
-    .map((n) => `<li>${n}</li>`).join('') +
-    (missing.length ? `<li class="danger">Not connected: ${missing.join(', ')}</li>` : '');
-  $('wiring-list').innerHTML = links
-    .map((l) => `<li><span class="sig w-${l.signal}">${l.signal}</span> ${prog.name} <b>${l.from.label}</b> → ${tgt.name} <b>${l.to.label}</b></li>`)
-    .join('');
+  const o = selOrient.value;
+  renderWiring($('diagram'), selProg.value, selTgt.value, {
+    orientation: o === 'horizontal' || o === 'vertical' ? o : undefined, // auto follows the screen
+    highlight: (selHl.value || undefined) as Signal | undefined,
+  });
 }
 
 for (const s of [selProg, selTgt, selOrient, selHl]) {
@@ -54,10 +43,9 @@ for (const s of [selProg, selTgt, selOrient, selHl]) {
     render();
   };
 }
-window.addEventListener('resize', render);
 window.addEventListener('hashchange', () => {
   fromHash();
   render();
 });
 fromHash();
-render();
+keepDrawn(render);

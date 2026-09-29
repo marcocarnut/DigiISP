@@ -16,6 +16,8 @@ import { parseIntelHex, toIntelHex, type MemoryImage } from './ihex';
 import { fuseMemories, loadParts, partBySignature, type ConfigItem, type ConfigValue, type Part } from './parts';
 import { $, ask, Checklist, errorText, esc, log, programmer, status } from './ui';
 import type { UsbAsp } from './usbasp';
+import { boardById } from './wiring/boards';
+import { boardOptions, keepDrawn, remembered, renderWiring } from './wiring/widget';
 
 const list = () => new Checklist($('target-steps'));
 const bar = () => $<HTMLProgressElement>('target-progress');
@@ -120,6 +122,16 @@ async function identify() {
     renderPart();
     renderFuses();
     $('target-ops').hidden = false;
+    // does the chip match the board picked for the wiring?
+    const board = boardById($<HTMLSelectElement>('sel-target-board').value);
+    if (board?.parts.length && !board.parts.includes(part.id)) {
+      const { parts } = await loadParts();
+      const names = board.parts.map((id) => parts.find((q) => q.id === id)?.name ?? id);
+      status($('target-status'),
+        `Found an <b>${esc(part.name)}</b>, but you picked <b>${esc(board.name)}</b>, which carries ` +
+        `${names.map(esc).join(' or ')}. If that's unexpected, check the board choice and the wiring.`,
+        'warn-banner');
+    }
   });
 }
 
@@ -389,7 +401,52 @@ async function writeConfig(which: 'fuses' | 'lock') {
 
 // --- init -------------------------------------------------------------------------
 
+// --- wiring ---------------------------------------------------------------------
+
+/** Whether this programmer will leave RESET to the user. */
+function manualReset(p: UsbAsp | null): boolean {
+  return !!p && (!p.resetControl || (p.kind === 'digiisp' && $<HTMLInputElement>('manual-reset').checked));
+}
+
+function drawTargetWiring() {
+  const p = programmer.get();
+  if (!p) return;
+  const manual = manualReset(p);
+  renderWiring($('wiring'), $<HTMLSelectElement>('sel-prog-board').value, $<HTMLSelectElement>('sel-target-board').value, {
+    omit: manual ? ['RESET'] : [],
+    notes: manual ? ["No RESET wire: hold the target's RESET low (its reset button, or a jumper from RESET to GND) when the page asks."] : [],
+  });
+}
+
+/** The programmer board choice depends on what is connected. */
+function setupProgrammerBoard(p: UsbAsp | null) {
+  const sel = $<HTMLSelectElement>('sel-prog-board');
+  if (p?.kind === 'digiisp') {
+    boardOptions(sel, 'programmer', ['digispark', 'franzininho']);
+    sel.value = remembered.programmerBoard(p.device.serialNumber) ?? 'digispark';
+    $('prog-board-row').hidden = false;
+  } else {
+    boardOptions(sel, 'programmer', ['usbasp']);
+    $('prog-board-row').hidden = true;
+  }
+}
+
 export function initTarget() {
+  const selTarget = $<HTMLSelectElement>('sel-target-board');
+  boardOptions(selTarget, 'target');
+  selTarget.value = remembered.target() ?? 'icsp6';
+  if (!selTarget.value) selTarget.value = 'icsp6';
+  selTarget.onchange = () => {
+    remembered.setTarget(selTarget.value);
+    drawTargetWiring();
+  };
+  $<HTMLSelectElement>('sel-prog-board').onchange = () => {
+    remembered.setProgrammerBoard(programmer.get()?.device.serialNumber, $<HTMLSelectElement>('sel-prog-board').value);
+    drawTargetWiring();
+  };
+  $<HTMLInputElement>('manual-reset').addEventListener('change', drawTargetWiring);
+  keepDrawn(drawTargetWiring);
+
   $('btn-read-target').onclick = identify;
   $('btn-flash-read').onclick = flashRead;
   $<HTMLInputElement>('file-flash-write').onchange = () => flashWrite(false);
@@ -403,7 +460,9 @@ export function initTarget() {
     if (target) edited = { ...target.config };
     void renderFuses();
   };
-  programmer.subscribe(() => {
+  programmer.subscribe((p) => {
+    setupProgrammerBoard(p);
+    drawTargetWiring();
     target = null;
     $('target').innerHTML = '';
     $('target-ops').hidden = true;
