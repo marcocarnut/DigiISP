@@ -715,3 +715,9 @@ button.small {
   font-size: 1.2rem;
   font-weight: 700;
 }
+
+p.must {
+  color: var(--danger);
+  font-weight: 600;
+  font-size: 1.05rem;
+}

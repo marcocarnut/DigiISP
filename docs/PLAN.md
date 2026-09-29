@@ -187,8 +187,7 @@ high-voltage programmer or command-line experience):
 - Web: TypeScript and Vite 5 (works with Ubuntu's Node 18), no framework.
 - SCK: USI clocked by software strobe; "auto" is 175 kHz (safe for 1 MHz targets).
 
-## Open questions
+## Publication
 
-- USB vendor string: obdev's shared-ID rules want a domain or e-mail you
-  control (e.g. the project URL). Currently the placeholder `DigiISP`.
-- Hosting and project URL.
+- Web app URL: https://digiisp.postcogito.org (also the USB vendor string, as
+  obdev's shared-ID rules ask, and the WebUSB landing page, firmware v5).

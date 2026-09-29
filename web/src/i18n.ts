@@ -134,6 +134,7 @@ const en = {
 
   // bootstrap
   'boot.title': 'Make programmers out of ATtiny85 boards',
+  'boot.twoBoards': 'You need <b>two</b> boards to run this procedure.',
   'boot.intro': "A Digispark or Franzininho has enough free pins for ISP only if its own RESET pin becomes an I/O pin (to drive the target's reset), and that takes a programmer. Two steps and two boards solve that: the first board gets DigiISP over USB and, while you hold the second board's RESET button, turns the second board into a complete programmer.",
   'step1.title': 'Install DigiISP on the first board',
   'step1.hint': 'Over USB, through the Micronucleus bootloader the board comes with. No wiring.',
@@ -367,6 +368,7 @@ const pt: Record<Key, string> = {
   'wiring.notConnected': 'Sem ligação: {signals}',
 
   'boot.title': 'Transforme placas ATtiny85 em gravadores',
+  'boot.twoBoards': 'Você precisa de <b>duas</b> placas para este procedimento.',
   'boot.intro': 'Um Digispark ou Franzininho só tem pinos livres suficientes para ISP se o seu próprio pino RESET virar um pino de E/S (para controlar o reset do alvo), e para isso é preciso um gravador. Dois passos e duas placas resolvem: a primeira placa recebe o DigiISP pela USB e, enquanto você segura o botão RESET da segunda placa, transforma a segunda placa num gravador completo.',
   'step1.title': 'Instale o DigiISP na primeira placa',
   'step1.hint': 'Pela USB, através do bootloader Micronucleus que vem na placa. Sem ligações.',

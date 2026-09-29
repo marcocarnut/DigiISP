@@ -65,9 +65,10 @@ PROGMEM const char usbDescriptorDevice[18] = {
 #define MS_OS_20_DESCRIPTOR_INDEX 7
 
 /* BOS with a Microsoft OS 2.0 platform capability, so Windows binds WinUSB
- * (needed for WebUSB) without any driver installation. */
+ * (needed for WebUSB) without any driver installation, and a WebUSB one
+ * naming the web app as the device's landing page. */
 static const PROGMEM uint8_t bosDescriptor[] = {
-    5, USBDESCR_BOS, 40, 0, 2,
+    5, USBDESCR_BOS, 64, 0, 3,
     /* USB 2.0 extension: no LPM (Linux warns if it's missing) */
     7, 0x10, 0x02, 0x00, 0x00, 0x00, 0x00,
     /* MS OS 2.0 platform capability */
@@ -78,8 +79,22 @@ static const PROGMEM uint8_t bosDescriptor[] = {
     MS_OS_20_SET_LEN, 0x00,
     DIGIISP_FUNC_MS_OS_20,                              /* bMS_VendorCode */
     0x00,                                               /* bAltEnumCode */
+    /* WebUSB platform capability */
+    24, 0x10, 0x05, 0x00,
+    0x38, 0xB6, 0x08, 0x34, 0xA9, 0x09, 0xA0, 0x47,     /* {3408B638-09A9-47A0- */
+    0x8B, 0xFD, 0xA0, 0x76, 0x88, 0x15, 0xB6, 0x65,     /* 8BFD-A0768815B665} */
+    0x00, 0x01,                                         /* bcdVersion 1.0 */
+    DIGIISP_FUNC_WEBUSB,                                /* bVendorCode */
+    1,                                                  /* iLandingPage */
 };
-_Static_assert(sizeof(bosDescriptor) == 40, "BOS wTotalLength");
+_Static_assert(sizeof(bosDescriptor) == 64, "BOS wTotalLength");
+
+/* WebUSB URL descriptor for iLandingPage 1 (the URL without its NUL) */
+#define LANDING_PAGE "digiisp.postcogito.org"
+static const PROGMEM struct {
+    uint8_t bLength, bDescriptorType, bScheme;
+    char url[sizeof(LANDING_PAGE) - 1];
+} landingPage = { 3 + sizeof(LANDING_PAGE) - 1, 3 /* WEBUSB_URL */, 1 /* https:// */, LANDING_PAGE };
 
 #define W(c) c, 0   /* UTF-16LE character */
 
@@ -301,6 +316,12 @@ usbMsgLen_t usbFunctionSetup(uchar data[8]) {
         replyBuffer[1] = DDRB;
         replyBuffer[2] = PORTB;
         len = 3;
+
+    } else if (data[1] == DIGIISP_FUNC_WEBUSB && rq->wIndex.word == 2 /* GET_URL */
+            && rq->wValue.bytes[0] == 1) {
+        usbMsgPtr = (usbMsgPtr_t)&landingPage;
+        usbMsgFlags = USB_FLG_MSGPTR_IS_ROM;
+        return sizeof(landingPage);
 
     } else if (data[1] == DIGIISP_FUNC_MS_OS_20
             && rq->wIndex.word == MS_OS_20_DESCRIPTOR_INDEX) {

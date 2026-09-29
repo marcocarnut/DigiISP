@@ -52,10 +52,10 @@ extern void usbHadReset(void);
 #define USB_CFG_VENDOR_ID       0xc0, 0x16 /* = 0x16c0 = 5824 = voti.nl */
 #define USB_CFG_DEVICE_ID       0xdc, 0x05 /* = 0x05dc = 1500 */
 #define USB_CFG_DEVICE_VERSION  0x01, 0x00 /* bcdDevice 0.01 */
-/* TODO: obdev's rules ask for a vendor string naming a domain or e-mail
- * address you control (e.g. the project URL). */
-#define USB_CFG_VENDOR_NAME     'D', 'i', 'g', 'i', 'I', 'S', 'P'
-#define USB_CFG_VENDOR_NAME_LEN 7
+/* obdev's rules for the shared IDs: the vendor string names a domain the
+ * project controls. */
+#define USB_CFG_VENDOR_NAME     'd', 'i', 'g', 'i', 'i', 's', 'p', '.', 'p', 'o', 's', 't', 'c', 'o', 'g', 'i', 't', 'o', '.', 'o', 'r', 'g'
+#define USB_CFG_VENDOR_NAME_LEN 22
 #define USB_CFG_DEVICE_NAME     'D', 'i', 'g', 'i', 'I', 'S', 'P'
 #define USB_CFG_DEVICE_NAME_LEN 7
 #define USB_CFG_DEVICE_CLASS        0xff

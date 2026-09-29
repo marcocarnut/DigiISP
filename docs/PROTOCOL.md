@@ -13,7 +13,7 @@ request to the device** on endpoint 0, so it maps directly onto WebUSB's
 | Field | Value |
 |---|---|
 | VID:PID | `16c0:05dc` (obdev's shared vendor-class ID, same as USBasp) |
-| Manufacturer / Product | `DigiISP` / `DigiISP` (USBasp: `www.fischl.de` / `USBasp`) |
+| Manufacturer / Product | `digiisp.postcogito.org` / `DigiISP` (USBasp: `www.fischl.de` / `USBasp`) |
 | Serial number | 8 hex digits, generated on first boot and kept in EEPROM (addresses 0x10–0x13) |
 | bcdUSB | 2.10, so Windows asks for the BOS descriptor |
 | Class | 0xFF (vendor) on device and interface; no endpoints besides EP0 |
@@ -83,6 +83,7 @@ avrdude only looks at bits 0 and 24.
 | 0x40 | INFO | IN | 12 bytes (10 before firmware v4): `'D' 'I'`, protocol version, firmware version, flags (bit 0 = reset control), OSCCAL, own low fuse, own high fuse, own extended fuse, own lock bits, then the board's Micronucleus version major and minor (0 0 if not found; the firmware finds Micronucleus' USB device descriptor, VID 16d0 PID 0753, in flash and reads its bcdDevice) |
 | 0x41 | REBOOT | IN | – (about 50 ms later the device drops off the bus, and the watchdog resets it into Micronucleus) |
 | 0x42 | PINS | IN | 3 bytes: PINB, DDRB, PORTB (for diagnostics, e.g. whether the reset wire has the target's pull-up) |
+| 0x57 | WebUSB GET_URL | IN, wValue = 1, wIndex = 2 | the landing page URL descriptor: `https://digiisp.postcogito.org` |
 | 0x4D | MS OS 2.0 | IN, wIndex = 7 | the Microsoft OS 2.0 descriptor set (162 bytes: WinUSB compatible ID plus a DeviceInterfaceGUIDs property) |
 
 ### Bootstrap mode (no reset control)
@@ -110,5 +111,6 @@ erases EEPROM, so the serial number survives firmware updates.
 
 - **BOS** (type 0x0F): 5-byte header plus one Microsoft OS 2.0 platform
   capability (vendor code 0x4D, set length 162, Windows 8.1+).
-- A WebUSB platform capability (landing page URL) will be added once the app has
-  a public URL.
+- **WebUSB platform capability:** version 1.0, vendor code 0x57, landing page 1
+  (`https://digiisp.postcogito.org`).
+- **USB 2.0 extension capability:** no LPM (Linux warns if it is missing).
