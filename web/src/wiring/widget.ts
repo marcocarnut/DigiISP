@@ -30,15 +30,23 @@ export function renderWiring(el: HTMLElement, programmerId: string, targetId: st
     el.innerHTML = '';
     return;
   }
-  const { svg, links, missing } = drawWiring(prog, tgt, opt.orientation ?? autoOrientation(), opt.highlight, opt.omit);
-  const notes = [...(opt.notes ?? []), ...prog.notes.map((k) => t(k)), ...tgt.notes.map((k) => t(k))];
-  const pn = esc(boardName(prog));
-  const tn = esc(boardName(tgt));
+  const { svg, links, missing, jumper } = drawWiring(prog, tgt, opt.orientation ?? autoOrientation(), opt.highlight, opt.omit);
+  // a Set: the same board on both ends would repeat its notes
+  const notes = [...new Set([
+    ...(opt.notes ?? []),
+    ...(jumper ? [t(jumper === 'spare' ? 'wiring.jumper.spare' : 'wiring.jumper.y')] : []),
+    ...prog.notes.map((k) => t(k)),
+    ...tgt.notes.map((k) => t(k)),
+  ])];
+  // the same kind of board on both ends: say which is which
+  const same = prog.id === tgt.id;
+  const pn = esc(same ? `${boardName(prog)} (${t('role.programmer')})` : boardName(prog));
+  const tn = esc(same ? `${boardName(tgt)} (${t('role.target')})` : boardName(tgt));
   el.innerHTML = svg +
     `<ul class="wiring-notes">${notes.map((n) => `<li>${esc(n)}</li>`).join('')}` +
     (missing.length ? `<li class="danger">${esc(t('wiring.notConnected', { signals: missing.join(', ') }))}</li>` : '') + '</ul>' +
     `<ol class="wiring-list">${links.map((l) =>
-      `<li><span class="sig w-${l.signal}">${l.signal}</span> ${pn} <b>${esc(l.from.label)}</b> → ${tn} <b>${esc(l.to.label)}</b></li>`,
+      `<li><span class="sig w-${l.signal}">${esc(l.tag ?? l.signal)}</span> ${pn} <b>${esc(l.from.label)}</b> → ${tn} <b>${esc(l.to.label)}</b></li>`,
     ).join('')}</ol>`;
 }
 

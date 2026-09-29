@@ -447,9 +447,12 @@ function drawTargetWiring() {
   const p = programmer.get();
   if (!p) return;
   const manual = manualReset(p);
-  renderWiring($('wiring'), $<HTMLSelectElement>('sel-prog-board').value, $<HTMLSelectElement>('sel-target-board').value, {
+  const target = $<HTMLSelectElement>('sel-target-board').value;
+  // boards without a reset button get a RST→GND jumper, explained by its own note
+  const button = boardById(target)?.resetButton;
+  renderWiring($('wiring'), $<HTMLSelectElement>('sel-prog-board').value, target, {
     omit: manual ? ['RESET'] : [],
-    notes: manual ? [t('wiring.noReset')] : [],
+    notes: manual && button ? [t('wiring.noReset')] : [],
   });
 }
 

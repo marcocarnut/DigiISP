@@ -21,6 +21,8 @@ export interface Pin {
   programmer?: Signal;
   /** pin 1 of a header (drawn square) */
   first?: boolean;
+  /** a GND pin not used by the main GND wire: where a reset jumper can start */
+  spareGnd?: boolean;
 }
 
 export interface Shape {
@@ -56,6 +58,9 @@ export interface Board {
   notes: Key[];
   /** never drawn turned (chips: notch up, as on a breadboard) */
   upright?: boolean;
+  /** has a reset button to hold the target in reset by hand; without one a
+   * jumper from RESET to GND does it */
+  resetButton?: boolean;
 }
 
 const rect = (w: number, h: number): [number, number][] => [[0, 0], [w, 0], [w, h], [0, h]];
@@ -137,6 +142,7 @@ export const BOARDS: Board[] = [
       { kind: 'usb', x: -10.5, y: 9.1, w: 16, h: 12 },
       { kind: 'chip', x: 32.6, y: 12.3, w: 9.4, h: 5.3, label: 'ATtiny85', notch: 'right' },
       { kind: 'button', x: 34.6, y: 1.3, w: 6, h: 6, label: 'RESET' },
+      { kind: 'header', x: 19.5, y: 0.7, w: 7.8, h: 2.6 },
       { kind: 'header', x: 44.6, y: 4.7, w: 2.6, h: 20.3 },
       { kind: 'led', x: 20.3, y: 25, w: 2, h: 2 },
       { kind: 'led', x: 25.4, y: 25, w: 2, h: 2 },
@@ -151,9 +157,14 @@ export const BOARDS: Board[] = [
       { x: 45.91, y: 11.07, label: '5', side: 'right' },
       { x: 45.91, y: 8.53, label: 'VCC', side: 'right', ...tinyRoles.VCC },
       { x: 45.91, y: 5.99, label: 'GND', side: 'right', ...tinyRoles.GND },
+      // second header along the top edge (J1)
+      { x: 20.84, y: 2.0, label: 'VIN', side: 'down' },
+      { x: 23.38, y: 2.0, label: 'GND', side: 'down', spareGnd: true },
+      { x: 25.92, y: 2.0, label: 'VCC', side: 'down' },
     ],
     parts: ['t85'],
     notes: ['board.franzininho.n1'],
+    resetButton: true,
   },
   {
     // Arduino Uno Rev3 (UNO-TH_Rev3e.brd), 68.6 x 53.3 mm
@@ -177,6 +188,7 @@ export const BOARDS: Board[] = [
     pins: icsp6(63.63, 22.86, 0, 1, 1, 0),
     parts: ['m328p'],
     notes: ['board.uno.n1', 'board.uno.n2'],
+    resetButton: true,
   },
   {
     // Arduino Nano 3.x (NanoV3.3.brd), 43.2 x 17.8 mm
@@ -195,6 +207,7 @@ export const BOARDS: Board[] = [
     pins: icsp6(41.81, 11.43, 0, -1, -1, 0),
     parts: ['m328p', 'm328pb', 'm168'],
     notes: ['board.nano.n1', 'board.nano.n2'],
+    resetButton: true,
   },
   {
     // SparkFun Arduino Pro v16 (Arduino-Pro-v16.brd), 52.1 x 53.3 mm
@@ -214,6 +227,7 @@ export const BOARDS: Board[] = [
     pins: icsp6(46.99, 22.86, 0, 1, 1, 0),
     parts: ['m328p', 'm168'],
     notes: ['board.pro.n1'],
+    resetButton: true,
   },
   {
     // SparkFun Pro Mini (Arduino-Pro-Mini.brd), 17.8 x 33 mm
@@ -233,6 +247,7 @@ export const BOARDS: Board[] = [
     }),
     parts: ['m328p', 'm168'],
     notes: ['board.promini.n1'],
+    resetButton: true,
   },
   {
     // SparkFun Pro Micro v13 (SparkFun_Pro_Micro.brd), 17.8 x 33 mm; clones follow it

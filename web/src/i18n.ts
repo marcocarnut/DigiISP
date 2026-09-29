@@ -131,6 +131,10 @@ const en = {
   'done.fuses': 'Written: {mems}. Fuse changes take effect at the target\'s next reset.',
   'wiring.noReset': "No RESET wire: hold the target's RESET low (its reset button, or a jumper from RESET to GND) when the page asks.",
   'wiring.notConnected': 'Not connected: {signals}',
+  'role.programmer': 'programmer',
+  'role.target': 'target',
+  'wiring.jumper.spare': "The target has no reset button: the RST→GND jumper holds its RESET at GND while programming. Remove it when done, or the board stays in reset.",
+  'wiring.jumper.y': "The target has no reset button and the programmer has only one GND pin: use a Y cable (or two jumpers on the same pin) from the programmer's GND to both the target's GND and its RESET. Remove the RESET end when done, or the board stays in reset.",
 
   // bootstrap
   'boot.title': 'Make programmers out of ATtiny85 boards',
@@ -366,6 +370,10 @@ const pt: Record<Key, string> = {
   'done.fuses': 'Gravado: {mems}. As mudanças de fusíveis valem a partir do próximo reset do alvo.',
   'wiring.noReset': 'Sem fio de RESET: segure o RESET do alvo em nível baixo (o botão de reset, ou um jumper do RESET ao GND) quando a página pedir.',
   'wiring.notConnected': 'Sem ligação: {signals}',
+  'role.programmer': 'gravador',
+  'role.target': 'alvo',
+  'wiring.jumper.spare': 'O alvo não tem botão de reset: o jumper RST→GND mantém o RESET dele no GND durante a gravação. Retire-o no fim, senão a placa fica em reset.',
+  'wiring.jumper.y': 'O alvo não tem botão de reset e o gravador só tem um pino GND: use um cabo Y (ou dois jumpers no mesmo pino) do GND do gravador até o GND e o RESET do alvo. Retire a ponta do RESET no fim, senão a placa fica em reset.',
 
   'boot.title': 'Transforme placas ATtiny85 em gravadores',
   'boot.twoBoards': 'Você precisa de <b>duas</b> placas para este procedimento.',

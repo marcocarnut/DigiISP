@@ -8,6 +8,7 @@ import { Micronucleus } from './micronucleus';
 import { $, ask, Checklist, chooseProgrammer, errorText, esc, log, programmer, status } from './ui';
 import { onLang, t } from './i18n';
 import type { UsbAsp } from './usbasp';
+import { boardById } from './wiring/boards';
 import { boardOptions, colorEditor, keepDrawn, remembered, renderWiring } from './wiring/widget';
 
 const SCK_187K = 9; // safe for a factory fresh ATtiny85 at 1 MHz
@@ -172,10 +173,11 @@ function drawStep2Wiring() {
   const p = programmer.get();
   const wired = !!p?.info?.resetControl && $<HTMLInputElement>('step2-wired').checked;
   const second = $<HTMLSelectElement>('sel-second-board').value;
-  const how = t(second === 'franzininho' ? 'step2.hold.button' : 'step2.hold.jumper');
+  // boards without a reset button get a RST→GND jumper, explained by its own note
+  const button = boardById(second)?.resetButton;
   renderWiring($('step2-wiring'), $<HTMLSelectElement>('sel-first-board').value, second, {
     omit: wired ? [] : ['RESET'],
-    notes: wired ? [] : [t('step2.noReset', { how })],
+    notes: wired || !button ? [] : [t('step2.noReset', { how: t('step2.hold.button') })],
   });
 }
 

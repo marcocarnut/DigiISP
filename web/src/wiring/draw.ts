@@ -11,6 +11,11 @@ export interface Connection {
   signal: Signal;
   from: Pin; // on the programmer
   to: Pin; // on the target
+  /** tag text instead of the signal name */
+  tag?: string;
+  /** a jumper holding the target's RESET at GND: from a spare GND pin, or a
+   * Y cable sharing the GND wire's pin */
+  jumper?: 'spare' | 'y';
 }
 
 type Rot = 0 | 90 | 180 | 270;
@@ -169,6 +174,11 @@ function text(x: number, y: number, s: string, cls: string, anchor = 'middle') {
 const SIDE: Record<NonNullable<Pin['side']>, Pt> = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
 
 /** The board itself, and its text (drawn later, on top of the wires). k scales text for big drawings. */
+/** The board's name with its role, so two boards of the same kind can be told apart. */
+function titled(b: Board, role: 'programmer' | 'target'): string {
+  return `${boardName(b)} · ${t(role === 'programmer' ? 'role.programmer' : 'role.target')}`;
+}
+
 /** Does the axis-aligned segment p-q pass through the box? */
 function segHitsBox(p: Pt, q: Pt, x0: number, y0: number, x1: number, y1: number): boolean {
   return Math.max(p[0], q[0]) >= x0 && Math.min(p[0], q[0]) <= x1 && Math.max(p[1], q[1]) >= y0 && Math.min(p[1], q[1]) <= y1;
@@ -203,7 +213,7 @@ function boardSvg(pl: Placed, role: 'programmer' | 'target', used: Set<Pin>, k: 
   }
   // the name goes above the board, or below it if a wire runs through that spot
   const nx = (pl.box.x0 + pl.box.x1) / 2;
-  const name = boardName(b);
+  const name = titled(b, role);
   const half = (name.length * 0.6 * 2.4 * k) / 2;
   const clear = (y: number) => !wirePaths.some((path) => path.some((q, i) => i > 0 && segHitsBox(path[i - 1], q, nx - half, y - 1.5 * k, nx + half, y + 1.5 * k)));
   const above = pl.box.y0 - 1.5 - 1.5 * k;
@@ -219,11 +229,28 @@ export interface Diagram {
   missing: Signal[];
   /** wire crossings left in the drawing */
   crossings: number;
+  /** the reset jumper drawn, if any */
+  jumper?: 'spare' | 'y';
 }
 
-/** omit: signals not wired (e.g. RESET when the user holds the target's reset button) */
+/** With RESET not driven by the programmer and no reset button on the target,
+ * a jumper holds the target's RESET at GND: from a spare GND pin of the
+ * programmer if it has one, else as a Y cable from the GND wire's pin. */
+function resetJumper(prog: Board, tgt: Board, links: Connection[]): Connection | null {
+  const rst = tgt.pins.find((p) => p.target === 'RESET');
+  if (!rst || tgt.resetButton) return null;
+  const spare = prog.pins.find((p) => p.spareGnd);
+  const gnd = links.find((l) => l.signal === 'GND')?.from;
+  if (spare) return { signal: 'GND', from: spare, to: rst, tag: 'RST→GND', jumper: 'spare' };
+  if (gnd) return { signal: 'GND', from: gnd, to: rst, tag: 'RST→GND', jumper: 'y' };
+  return null;
+}
+
+/** omit: signals not wired (e.g. RESET when the user holds the target's reset) */
 export function drawWiring(prog: Board, tgt: Board, orientation: Orientation, highlight?: Signal, omit: Signal[] = []): Diagram {
   const links = connections(prog, tgt).filter((l) => !omit.includes(l.signal));
+  const jumper = omit.includes('RESET') ? resetJumper(prog, tgt, links) : null;
+  if (jumper) links.push(jumper);
   const missing = SIGNALS.filter((s) => !omit.includes(s) && !links.some((l) => l.signal === s));
   const horizontal = orientation === 'horizontal';
   const scale = (a: Placed, b: Placed) => {
@@ -271,7 +298,8 @@ export function drawWiring(prog: Board, tgt: Board, orientation: Orientation, hi
 
     // name tag on the wire: longest segments first, sliding along each until
     // it clears the tags placed so far
-    const w = (l.signal.length * 1.05 + 1.6) * k;
+    const label = l.tag ?? l.signal;
+    const w = (label.length * 1.05 + 1.6) * k;
     const h = 2.5 * k;
     const segs = path.slice(1).map((q, j) => [path[j], q] as [Pt, Pt])
       .sort((u, v) => Math.hypot(v[1][0] - v[0][0], v[1][1] - v[0][1]) - Math.hypot(u[1][0] - u[0][0], u[1][1] - u[0][1]));
@@ -282,12 +310,12 @@ export function drawWiring(prog: Board, tgt: Board, orientation: Orientation, hi
     placedTags.push({ x: tx, y: ty, w, h });
     tags += `<g class="wd-tag w-${l.signal}${dim}">` +
       `<rect x="${f(tx - w / 2)}" y="${f(ty - h / 2)}" width="${f(w)}" height="${f(h)}" rx="${f(h / 2)}"/>` +
-      text(tx, ty, l.signal, 'wd-tag-text') + '</g>';
+      text(tx, ty, label, 'wd-tag-text') + '</g>';
   });
 
   const used = new Set(links.flatMap((l) => [l.from, l.to]));
   // board names are centered above each board and may be wider than it
-  const nameHalf = (pl: Placed) => boardName(pl.board).length * 0.6 * 2.4 * k / 2;
+  const nameHalf = (pl: Placed) => titled(pl.board, pl === a ? 'programmer' : 'target').length * 0.6 * 2.4 * k / 2;
   for (const pl of [a, b]) {
     const cx = (pl.box.x0 + pl.box.x1) / 2;
     pts.push([cx - nameHalf(pl), pl.box.y0 - 3 * k], [cx + nameHalf(pl), pl.box.y1 + 3 * k]);
@@ -302,5 +330,5 @@ export function drawWiring(prog: Board, tgt: Board, orientation: Orientation, hi
     `<svg class="wiring" xmlns="http://www.w3.org/2000/svg" viewBox="${f(x0)} ${f(y0)} ${f(x1 - x0)} ${f(y1 - y0)}" role="img" ` +
     `aria-label="${esc(boardName(prog))} → ${esc(boardName(tgt))}" style="--k:${f(k)}">` +
     aShapes + bShapes + wires + aText + bText + tags + '</svg>';
-  return { svg, links, missing, crossings };
+  return { svg, links, missing, crossings, jumper: jumper?.jumper };
 }
