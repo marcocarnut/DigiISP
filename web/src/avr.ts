@@ -1,6 +1,7 @@
 // AVR ISP helpers: signature lookup, fuse reading and decoding.
 // A full part database (generated from avrdude.conf) comes in Phase 4.
 
+import { t, type Key } from './i18n';
 import type { MemoryImage } from './ihex';
 import { decodeOp, encodeOp, fuseMemories, type Part } from './parts';
 import type { UsbAsp } from './usbasp';
@@ -59,27 +60,27 @@ export async function readTargetInfo(p: UsbAsp): Promise<TargetInfo> {
 export interface FuseBit {
   name: string;
   mask: number;
-  description: string;
+  description: Key;
   /** Programming this bit is dangerous (locks out ISP). */
   danger?: boolean;
 }
 
 export const TINYx5_FUSES: Record<keyof Omit<Fuses, 'lock'>, FuseBit[]> = {
   low: [
-    { name: 'CKDIV8', mask: 0x80, description: 'divide clock by 8' },
-    { name: 'CKOUT', mask: 0x40, description: 'clock output on PB4' },
-    { name: 'SUT', mask: 0x30, description: 'start-up time' },
-    { name: 'CKSEL', mask: 0x0f, description: 'clock source' },
+    { name: 'CKDIV8', mask: 0x80, description: 'tiny.ckdiv8' },
+    { name: 'CKOUT', mask: 0x40, description: 'tiny.ckout' },
+    { name: 'SUT', mask: 0x30, description: 'tiny.sut' },
+    { name: 'CKSEL', mask: 0x0f, description: 'tiny.cksel' },
   ],
   high: [
-    { name: 'RSTDISBL', mask: 0x80, description: 'PB5 is I/O, not reset', danger: true },
-    { name: 'DWEN', mask: 0x40, description: 'debugWIRE enabled', danger: true },
-    { name: 'SPIEN', mask: 0x20, description: 'serial programming enabled' },
-    { name: 'WDTON', mask: 0x10, description: 'watchdog always on' },
-    { name: 'EESAVE', mask: 0x08, description: 'keep EEPROM on chip erase' },
-    { name: 'BODLEVEL', mask: 0x07, description: 'brown-out detector level' },
+    { name: 'RSTDISBL', mask: 0x80, description: 'tiny.rstdisbl', danger: true },
+    { name: 'DWEN', mask: 0x40, description: 'tiny.dwen', danger: true },
+    { name: 'SPIEN', mask: 0x20, description: 'tiny.spien' },
+    { name: 'WDTON', mask: 0x10, description: 'tiny.wdton' },
+    { name: 'EESAVE', mask: 0x08, description: 'tiny.eesave' },
+    { name: 'BODLEVEL', mask: 0x07, description: 'tiny.bodlevel' },
   ],
-  extended: [{ name: 'SELFPRGEN', mask: 0x01, description: 'self-programming enabled' }],
+  extended: [{ name: 'SELFPRGEN', mask: 0x01, description: 'tiny.selfprgen' }],
 };
 
 export function hex2(v: number): string {
@@ -93,7 +94,7 @@ export function describeFuse(value: number, bits: FuseBit[]): { bit: FuseBit; te
     const single = (bit.mask & (bit.mask - 1)) === 0;
     if (single) {
       const programmed = field === 0;
-      return { bit, text: programmed ? 'programmed' : 'unprogrammed', programmed };
+      return { bit, text: t(programmed ? 'fuse.programmed' : 'fuse.unprogrammed'), programmed };
     }
     const shift = Math.log2(bit.mask & -bit.mask);
     return { bit, text: String(field >> shift), programmed: false };

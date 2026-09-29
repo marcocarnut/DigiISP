@@ -157,6 +157,13 @@ it is held by hand, and warns when the chip found doesn't match the board.
 Bootstrap step 2 shows the same diagram. wiring.html remains as a gallery of
 all combinations. Next: bare chip pinouts from Microchip ATDF files.
 
+Round 3 done (2026-09-29): English / Brazilian Portuguese with a selector top
+right (src/i18n.ts; static text via data-i18n attributes, code via t(); fuse
+bitfield texts from avrdude stay English); wire colors editable per signal
+and saved in the browser (tag text switches black/white for contrast); a
+big green "Checks out" / red "Mismatch" or "Failure" result after Identify;
+"show / hide" pills on collapsible sections.
+
 Make it very beginner friendly (for students and hobbyists without a
 high-voltage programmer or command-line experience):
 - Graphical wiring diagrams on the page (bootstrap, and programmer to common

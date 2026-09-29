@@ -1,8 +1,9 @@
 // Spike page for the wiring diagrams (wiring.html).
 
 import '../style.css';
-import { BOARDS, boardById, type Signal } from './boards';
-import { keepDrawn, renderWiring } from './widget';
+import { applyStatic, languageSelect, onLang } from '../i18n';
+import { boardById, type Signal } from './boards';
+import { boardOptions, colorEditor, keepDrawn, renderWiring } from './widget';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const selProg = $<HTMLSelectElement>('sel-programmer');
@@ -10,10 +11,15 @@ const selTgt = $<HTMLSelectElement>('sel-target');
 const selOrient = $<HTMLSelectElement>('sel-orientation');
 const selHl = $<HTMLSelectElement>('sel-highlight');
 
-for (const b of BOARDS) {
-  if (b.roles.includes('programmer')) selProg.add(new Option(b.name, b.id));
-  if (b.roles.includes('target')) selTgt.add(new Option(b.name, b.id));
-}
+const fillBoards = () => {
+  boardOptions(selProg, 'programmer');
+  boardOptions(selTgt, 'target');
+};
+fillBoards();
+languageSelect($<HTMLSelectElement>('lang'));
+applyStatic();
+onLang(fillBoards);
+colorEditor($('wire-colors'));
 
 // state in the URL: #programmer/target[/orientation[/highlight]]
 function fromHash() {

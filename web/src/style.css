@@ -319,7 +319,7 @@ section.step.collapsed h2 {
 }
 
 section.step.collapsed h2::after {
-  content: '✓ done (show)';
+  content: attr(data-done);
   margin-left: auto;
   font-size: 0.85rem;
   font-weight: normal;
@@ -539,6 +539,12 @@ svg.wiring text {
 .wd-wire.dim, .wd-tag.dim { opacity: 0.2; }
 .wd-tag rect { stroke: var(--wd-under); stroke-width: 0.25; }
 .wd-tag-text { font-size: calc(1.4px * var(--k)); font-weight: 700; fill: #fff; }
+.wd-tag.w-MOSI .wd-tag-text { fill: var(--w-mosi-fg, #fff); }
+.wd-tag.w-MISO .wd-tag-text { fill: var(--w-miso-fg, #fff); }
+.wd-tag.w-SCK .wd-tag-text { fill: var(--w-sck-fg, #fff); }
+.wd-tag.w-RESET .wd-tag-text { fill: var(--w-reset-fg, #fff); }
+.wd-tag.w-VCC .wd-tag-text { fill: var(--w-vcc-fg, #fff); }
+.wd-tag.w-GND .wd-tag-text { fill: var(--w-gnd-fg, #fff); }
 
 .w-MOSI { stroke: var(--w-mosi); fill: var(--w-mosi); }
 .w-MISO { stroke: var(--w-miso); fill: var(--w-miso); }
@@ -577,12 +583,12 @@ svg.wiring text {
   text-align: center;
   stroke: none;
 }
-.wiring-list .sig.w-MOSI { background: var(--w-mosi); }
-.wiring-list .sig.w-MISO { background: var(--w-miso); }
-.wiring-list .sig.w-SCK { background: var(--w-sck); }
-.wiring-list .sig.w-RESET { background: var(--w-reset); }
-.wiring-list .sig.w-VCC { background: var(--w-vcc); }
-.wiring-list .sig.w-GND { background: var(--w-gnd); color: var(--bg); }
+.wiring-list .sig.w-MOSI { background: var(--w-mosi); color: var(--w-mosi-fg, #fff); }
+.wiring-list .sig.w-MISO { background: var(--w-miso); color: var(--w-miso-fg, #fff); }
+.wiring-list .sig.w-SCK { background: var(--w-sck); color: var(--w-sck-fg, #fff); }
+.wiring-list .sig.w-RESET { background: var(--w-reset); color: var(--w-reset-fg, #fff); }
+.wiring-list .sig.w-VCC { background: var(--w-vcc); color: var(--w-vcc-fg, #fff); }
+.wiring-list .sig.w-GND { background: var(--w-gnd); color: var(--w-gnd-fg, #fff); }
 
 .warn-banner {
   background: var(--prompt-bg);
@@ -595,4 +601,117 @@ svg.wiring text {
 
 .wiring-controls {
   align-items: flex-end;
+}
+
+/* --- UI round 2: language, expand hints, result, wire colors --- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+select.lang {
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 0.2rem 0.3rem;
+  border-radius: 6px;
+}
+
+/* a clearly visible "show / hide" pill on collapsible sections */
+.expand-hint {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0 0.55rem;
+  border: 1px solid var(--accent);
+  border-radius: 1rem;
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.5;
+  vertical-align: middle;
+}
+
+.expand-hint .when-closed::after {
+  content: ' ▾';
+}
+
+.expand-hint .when-open::after {
+  content: ' ▴';
+}
+
+details:not([open]) > summary .when-open,
+details[open] > summary .when-closed {
+  display: none;
+}
+
+details.subsection {
+  margin: 0.5rem 0 0.75rem;
+}
+
+details.subsection > summary {
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.wire-colors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.9rem;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+
+.wire-color {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.wire-color input[type=color] {
+  width: 2rem;
+  height: 1.6rem;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: none;
+}
+
+button.small {
+  padding: 0.15rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+/* the big result after Identify */
+.result {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin: 0.75rem 0;
+  padding: 0.7rem 1rem;
+  border-radius: 8px;
+  color: #fff;
+}
+
+.result.good {
+  background: #1f8f4e;
+}
+
+.result.bad {
+  background: #c62828;
+}
+
+.result-icon {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.result-title {
+  font-size: 1.2rem;
+  font-weight: 700;
 }

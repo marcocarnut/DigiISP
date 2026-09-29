@@ -2,6 +2,7 @@
 // command line tool (commandline/library/micronucleus_lib.c). Speaks v2 and
 // v1 (which new Digisparks still ship with).
 
+import { t } from './i18n';
 import type { MemoryImage } from './ihex';
 
 export const MICRONUCLEUS_VID = 0x16d0;
@@ -45,7 +46,7 @@ const rjmp = (from: number, to: number) => 0xc000 | ((to - from - 1) & 0x0fff);
 export function layoutApplication(app: MemoryImage, flashSize: number, bootloaderStart: number): Uint8Array<ArrayBuffer> {
   if (bootloaderStart > 0x2000) throw new Error('only devices up to 8 KB are supported');
   if (app.end > flashSize) {
-    throw new Error(`firmware is ${app.end} bytes, only ${flashSize} fit next to the bootloader`);
+    throw new Error(t('err.mn.tooBig', { n: app.end, max: flashSize }));
   }
   const out = new Uint8Array(bootloaderStart).fill(0xff);
   out.set(app.data.subarray(0, app.end));
@@ -57,7 +58,7 @@ export function layoutApplication(app: MemoryImage, flashSize: number, bootloade
   } else if ((word0 & 0xf000) === 0xc000) {
     userReset = ((word0 & 0x0fff) + 1) & 0x0fff;
   } else {
-    throw new Error('the firmware reset vector is not a jump, the bootloader can not be inserted');
+    throw new Error(t('err.mn.noJump'));
   }
   const toBoot = rjmp(0, bootloaderStart / 2);
   out[0] = toBoot & 0xff;
@@ -89,7 +90,7 @@ export class Micronucleus {
     const version = `${major}.${minor.toString().padStart(2, '0')}`;
     if (major < 1 || major > 2) {
       await device.close();
-      throw new Error(`Micronucleus ${version} is not supported`);
+      throw new Error(t('err.mn.unsupported', { version }));
     }
     const r = await device.controlTransferIn(
       { requestType: 'vendor', recipient: 'device', request: CMD_INFO, value: 0, index: 0 },
@@ -97,7 +98,7 @@ export class Micronucleus {
     );
     if (r.status !== 'ok' || !r.data || r.data.byteLength < (major >= 2 ? 6 : 4)) {
       await device.close();
-      throw new Error('Micronucleus did not answer the info request, replug the board and try again');
+      throw new Error(t('err.mn.noInfo'));
     }
     const b = new Uint8Array(r.data.buffer, r.data.byteOffset, r.data.byteLength);
     const flashSize = (b[0] << 8) | b[1];
@@ -139,7 +140,7 @@ export class Micronucleus {
     const { flashSize, bootloaderStart } = this.info;
     if (this.info.major >= 2) return layoutApplication(app, flashSize, bootloaderStart);
     if (app.end > flashSize) {
-      throw new Error(`firmware is ${app.end} bytes, only ${flashSize} fit next to this bootloader`);
+      throw new Error(t('err.mn.tooBig', { n: app.end, max: flashSize }));
     }
     const out = new Uint8Array(bootloaderStart).fill(0xff);
     out.set(app.data.subarray(0, app.end));

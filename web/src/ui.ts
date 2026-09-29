@@ -1,5 +1,6 @@
 // Shared page helpers and state: log, prompts, and the connected programmer.
 
+import { t } from './i18n';
 import { USB_PID, USB_VID } from './protocol';
 import { UsbAsp } from './usbasp';
 
@@ -18,9 +19,14 @@ export function esc(s: string): string {
 export function errorText(e: unknown): string {
   const msg = e instanceof Error ? e.message : String(e);
   if (e instanceof DOMException && e.name === 'SecurityError') {
-    return `${msg} On Linux, install udev/60-digiisp.rules and replug the device.`;
+    return `${msg} ${t('err.linux')}`;
   }
   return msg;
+}
+
+/** "show / hide" hint for a details summary (switched by CSS on [open]). */
+export function expandHint(): string {
+  return `<span class="expand-hint"><span class="when-closed">${esc(t('details.show'))}</span><span class="when-open">${esc(t('details.hide'))}</span></span>`;
 }
 
 export function showError(el: HTMLElement, e: unknown) {

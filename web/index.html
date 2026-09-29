@@ -7,25 +7,26 @@
   </head>
   <body>
     <header>
-      <h1>DigiISP</h1>
-      <p class="sub">AVR ISP programming from the browser, for DigiISP and USBasp programmers</p>
+      <div class="topbar">
+        <h1>DigiISP</h1>
+        <select id="lang" class="lang" aria-label="Language / Idioma"></select>
+      </div>
+      <p class="sub" data-i18n="app.sub"></p>
       <nav>
-        <a href="#devices">Devices</a>
-        <a href="#bootstrap">Bootstrap</a>
+        <a href="#devices" data-i18n="tab.devices"></a>
+        <a href="#bootstrap" data-i18n="tab.bootstrap"></a>
       </nav>
     </header>
 
     <main>
-      <p id="unsupported" class="banner error" hidden>
-        This browser has no WebUSB. Use Chrome, Edge or another Chromium based browser.
-      </p>
+      <p id="unsupported" class="banner error" hidden data-i18n="unsupported"></p>
 
       <div id="prompt" class="overlay" hidden>
         <div class="modal" role="dialog" aria-modal="true" aria-labelledby="prompt-text">
           <p id="prompt-text"></p>
           <div class="row">
-            <button id="btn-prompt-ok">Continue</button>
-            <button id="btn-prompt-cancel" class="secondary">Cancel</button>
+            <button id="btn-prompt-ok" data-i18n="btn.continue"></button>
+            <button id="btn-prompt-cancel" class="secondary" data-i18n="btn.cancel"></button>
           </div>
         </div>
       </div>
@@ -33,67 +34,69 @@
       <!-- Devices tab -->
       <div id="tab-devices">
         <section>
-          <h2>Programmer</h2>
+          <h2 data-i18n="prog.title"></h2>
           <div class="row">
-            <button id="btn-connect">Connect programmer…</button>
-            <button id="btn-disconnect" class="secondary" hidden>Disconnect</button>
-            <button id="btn-reboot" class="secondary" hidden title="Reset into the Micronucleus bootloader for a firmware update">Reboot to bootloader</button>
+            <button id="btn-connect" data-i18n="prog.connect"></button>
+            <button id="btn-disconnect" class="secondary" hidden data-i18n="prog.disconnect"></button>
+            <button id="btn-reboot" class="secondary" hidden data-i18n="prog.reboot" data-i18n-title="prog.reboot.title"></button>
           </div>
           <div id="programmer"></div>
         </section>
 
         <section id="target-section" hidden>
-          <h2>Target</h2>
+          <h2 data-i18n="target.title"></h2>
           <div class="row wiring-controls">
-            <label id="prog-board-row">Your programmer
+            <label id="prog-board-row"><span data-i18n="target.yourProgrammer"></span>
               <select id="sel-prog-board"></select>
             </label>
-            <label>What are you programming?
+            <label><span data-i18n="target.what"></span>
               <select id="sel-target-board"></select>
             </label>
           </div>
           <details class="section" id="wiring-section" open>
-            <summary><h3>Wiring</h3></summary>
+            <summary><h3 data-i18n="wiring.title"></h3> <span class="expand-hint"><span class="when-closed" data-i18n="details.show"></span><span class="when-open" data-i18n="details.hide"></span></span></summary>
             <div id="wiring"></div>
+            <details class="subsection">
+              <summary><span data-i18n="wiring.colors"></span> <span class="expand-hint"><span class="when-closed" data-i18n="details.show"></span><span class="when-open" data-i18n="details.hide"></span></span></summary>
+              <div id="wire-colors" class="wire-colors"></div>
+            </details>
           </details>
           <div class="row">
             <label>SCK
               <select id="sck"></select>
             </label>
-            <button id="btn-read-target">Identify target</button>
+            <button id="btn-read-target" data-i18n="target.identify"></button>
           </div>
           <label id="manual-reset-row" class="hint" hidden>
-            <input type="checkbox" id="manual-reset" /> I'll hold the target's reset myself (PB5 is left alone)
+            <input type="checkbox" id="manual-reset" /> <span data-i18n="target.manual"></span>
           </label>
-          <p class="hint">
-            SCK must be below a quarter of the target's clock: factory fresh AVRs run at 1 MHz
-            (use 187.5 kHz or less), 128 kHz clocked targets need 16 kHz or less.
-          </p>
+          <p class="hint" data-i18n="target.sckHint"></p>
+          <div id="target-result"></div>
           <div id="target"></div>
 
           <div id="target-ops" hidden>
-            <h3>Flash</h3>
+            <h3 data-i18n="flash.title"></h3>
             <div class="row">
-              <button id="btn-flash-read" class="secondary">Read to file</button>
-              <label class="button">Write .hex file…<input type="file" id="file-flash-write" accept=".hex,.ihex,.ihx" hidden /></label>
-              <label class="button secondary">Verify against .hex…<input type="file" id="file-flash-verify" accept=".hex,.ihex,.ihx" hidden /></label>
-              <button id="btn-erase" class="secondary">Chip erase</button>
+              <button id="btn-flash-read" class="secondary" data-i18n="ops.readFile"></button>
+              <label class="button"><span data-i18n="ops.writeHex"></span><input type="file" id="file-flash-write" accept=".hex,.ihex,.ihx" hidden /></label>
+              <label class="button secondary"><span data-i18n="ops.verifyHex"></span><input type="file" id="file-flash-verify" accept=".hex,.ihex,.ihx" hidden /></label>
+              <button id="btn-erase" class="secondary" data-i18n="ops.erase"></button>
             </div>
-            <p class="hint">Writing erases the chip first, then writes and verifies.</p>
+            <p class="hint" data-i18n="flash.hint"></p>
 
-            <h3>EEPROM</h3>
+            <h3 data-i18n="eeprom.title"></h3>
             <div class="row">
-              <button id="btn-ee-read" class="secondary">Read to file</button>
-              <label class="button secondary" id="ee-write-label">Write .hex file…<input type="file" id="file-ee-write" accept=".hex,.eep,.ihex" hidden /></label>
+              <button id="btn-ee-read" class="secondary" data-i18n="ops.readFile"></button>
+              <label class="button secondary" id="ee-write-label"><span data-i18n="ops.writeHex"></span><input type="file" id="file-ee-write" accept=".hex,.eep,.ihex" hidden /></label>
             </div>
 
             <details class="section" id="fuse-section">
-              <summary><h3>Fuses and lock bits</h3> <span class="hint" id="fuse-summary"></span></summary>
+              <summary><h3 data-i18n="fuses.title"></h3> <span class="expand-hint"><span class="when-closed" data-i18n="details.show"></span><span class="when-open" data-i18n="details.hide"></span></span> <span class="hint" id="fuse-summary"></span></summary>
               <div id="fuse-editor"></div>
               <div class="row">
-                <button id="btn-fuses-write" disabled>Write fuses</button>
-                <button id="btn-lock-write" class="secondary" disabled>Write lock bits</button>
-                <button id="btn-fuses-reset" class="secondary" disabled>Undo changes</button>
+                <button id="btn-fuses-write" disabled data-i18n="fuses.write"></button>
+                <button id="btn-lock-write" class="secondary" disabled data-i18n="lock.write"></button>
+                <button id="btn-fuses-reset" class="secondary" disabled data-i18n="fuses.undo"></button>
               </div>
             </details>
           </div>
@@ -107,27 +110,16 @@
       <!-- Bootstrap tab -->
       <div id="tab-bootstrap" hidden>
         <section>
-          <h2>Make programmers out of ATtiny85 boards</h2>
-          <p>
-            A Digispark or Franzininho has enough free pins for ISP only if its own RESET pin becomes an
-            I/O pin (to drive the target's reset), and that takes a programmer. Two steps and two boards
-            solve that: the first board gets DigiISP over USB and, while you hold the second board's
-            RESET button, turns the second board into a complete programmer.
-          </p>
+          <h2 data-i18n="boot.title"></h2>
+          <p data-i18n="boot.intro"></p>
         </section>
 
         <section class="step" data-step="1">
-          <h2><span class="step-no">1</span> Install DigiISP on the first board</h2>
-          <p class="hint">Over USB, through the Micronucleus bootloader the board comes with. No wiring.</p>
-          <ol class="howto">
-            <li>Unplug the board.</li>
-            <li>Click <b>Upload DigiISP</b>; the device picker opens.</li>
-            <li>Plug the board in. It appears in the picker as an unknown device (16d0:0753):
-              select it and click <b>Connect</b> within about 5 seconds, before the bootloader gives up.
-              Works with Micronucleus 1.x (new Digisparks) and 2.x.</li>
-          </ol>
+          <h2><span class="step-no">1</span> <span data-i18n="step1.title"></span></h2>
+          <p class="hint" data-i18n="step1.hint"></p>
+          <ol class="howto" data-i18n-html="step1.howto"></ol>
           <div class="row">
-            <button id="btn-step1">Upload DigiISP…</button>
+            <button id="btn-step1" data-i18n="step1.btn"></button>
           </div>
           <progress id="step1-progress" max="1" value="0" hidden></progress>
           <ol id="step1-steps" class="checklist"></ol>
@@ -135,34 +127,33 @@
         </section>
 
         <section class="step" data-step="2">
-          <h2><span class="step-no">2</span> Turn the second board into a programmer</h2>
-          <p class="hint">
-            The first board writes Micronucleus and DigiISP to the second board over ISP, verifies them, and
-            only then sets the fuses that turn its RESET pin into I/O. You hold the second board's RESET
-            meanwhile, about 15 seconds.
-          </p>
+          <h2><span class="step-no">2</span> <span data-i18n="step2.title"></span></h2>
+          <p class="hint" data-i18n="step2.hint"></p>
           <div class="row wiring-controls">
-            <label>First board (DigiISP, in USB)
+            <label><span data-i18n="step2.first"></span>
               <select id="sel-first-board"></select>
             </label>
-            <label>Second board
+            <label><span data-i18n="step2.second"></span>
               <select id="sel-second-board"></select>
             </label>
           </div>
           <div id="step2-wiring"></div>
-          <p class="hint">Only the first board goes into USB.</p>
+          <details class="subsection">
+            <summary><span data-i18n="wiring.colors"></span> <span class="expand-hint"><span class="when-closed" data-i18n="details.show"></span><span class="when-open" data-i18n="details.hide"></span></span></summary>
+            <div id="wire-colors-2" class="wire-colors"></div>
+          </details>
+          <p class="hint" data-i18n="step2.usbOnly"></p>
           <div id="step2-programmer"></div>
           <label class="option">
             <input type="checkbox" id="step2-rstdisbl" checked />
-            Turn the second board's RESET pin into I/O (high fuse 0x5D), so it can work as a programmer.
-            Afterwards only Micronucleus (or a high voltage programmer) can update it.
+            <span data-i18n="step2.rstdisbl"></span>
           </label>
           <label class="option" id="step2-wired-row" hidden>
             <input type="checkbox" id="step2-wired" />
-            The first board's P5 is wired to the second board's RESET (no button to hold)
+            <span data-i18n="step2.wired"></span>
           </label>
           <div class="row">
-            <button id="btn-step2" disabled>Program the second board</button>
+            <button id="btn-step2" disabled data-i18n="step2.btn"></button>
           </div>
           <progress id="step2-progress" max="1" value="0" hidden></progress>
           <ol id="step2-steps" class="checklist"></ol>
@@ -171,8 +162,8 @@
       </div>
 
       <section>
-        <details>
-          <summary>USB log</summary>
+        <details class="section">
+          <summary><span data-i18n="log.title"></span> <span class="expand-hint"><span class="when-closed" data-i18n="details.show"></span><span class="when-open" data-i18n="details.hide"></span></span></summary>
           <pre id="log"></pre>
         </details>
       </section>

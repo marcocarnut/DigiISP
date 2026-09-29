@@ -14,10 +14,11 @@ import {
 } from './avr';
 import { parseIntelHex, toIntelHex, type MemoryImage } from './ihex';
 import { fuseMemories, loadParts, partBySignature, type ConfigItem, type ConfigValue, type Part } from './parts';
+import { onLang, t } from './i18n';
 import { $, ask, Checklist, errorText, esc, log, programmer, status } from './ui';
 import type { UsbAsp } from './usbasp';
-import { boardById } from './wiring/boards';
-import { boardOptions, keepDrawn, remembered, renderWiring } from './wiring/widget';
+import { boardById, boardName } from './wiring/boards';
+import { boardOptions, colorEditor, keepDrawn, remembered, renderWiring } from './wiring/widget';
 
 const list = () => new Checklist($('target-steps'));
 const bar = () => $<HTMLProgressElement>('target-progress');
@@ -27,6 +28,8 @@ const progress = (f: number) => (bar().value = f);
 let target: { part: Part; config: Record<string, number> } | null = null;
 /** Fuse and lock values being edited, by memory name. */
 let edited: Record<string, number> = {};
+/** The error of the last failed session, for the Identify result. */
+let lastError = '';
 
 // --- sessions ---------------------------------------------------------------------
 
@@ -53,26 +56,27 @@ async function withTarget<T>(action: (p: UsbAsp, part: Part, steps: Checklist) =
     manual = !p.resetControl || (p.kind === 'digiisp' && $<HTMLInputElement>('manual-reset').checked);
     await p.connect(manual);
     connected = true;
-    if (manual && !(await ask('Press and hold the RESET button of the target (or short its RESET pin to GND), then click Continue. Keep holding until told to release.'))) {
-      steps.note('Cancelled.');
+    lastError = '';
+    if (manual && !(await ask(t('target.holdReset')))) {
+      steps.note(t('steps.cancelled'));
+      lastError = t('steps.cancelled');
       return undefined;
     }
-    await steps.run('Enter programming mode', async () => {
-      if (!(await p.enableProgramming())) {
-        throw new Error('the target does not answer: check wiring, power and reset, or try a lower SCK');
-      }
+    await steps.run(t('steps.progmode'), async () => {
+      if (!(await p.enableProgramming())) throw new Error(t('err.noAnswer'));
     });
     const sig = await readSignature(p);
     const part = await partBySignature(sig);
     const sigText = Array.from(sig, hex2).join(' ');
-    if (!part) throw new Error(`unknown signature ${sigText}: not an AVR with ISP, or a bad connection`);
+    if (!part) throw new Error(t('err.unknownSig', { sig: sigText }));
     if (target && target.part !== part) {
-      throw new Error(`the target is now a ${part.name} (${sigText}), not the ${target.part.name} identified before: identify it again`);
+      throw new Error(t('err.otherPart', { part: part.name, sig: sigText, old: target.part.name }));
     }
     return await action(p, part, steps);
   } catch (e) {
-    log(`target: ${errorText(e)}`);
-    status($('target-status'), esc(errorText(e)), 'error');
+    lastError = errorText(e);
+    log(`target: ${lastError}`);
+    status($('target-status'), esc(lastError), 'error');
     return undefined;
   } finally {
     if (connected) {
@@ -81,7 +85,7 @@ async function withTarget<T>(action: (p: UsbAsp, part: Part, steps: Checklist) =
       } catch (e) {
         log(`disconnect failed: ${errorText(e)}`);
       }
-      if (manual) steps.note('You can release the RESET button now.', 'release');
+      if (manual) steps.note(t('steps.release'), 'release');
     }
     setBusy(false);
   }
@@ -109,41 +113,78 @@ async function readHexFile(input: HTMLInputElement, size: number): Promise<{ nam
 
 // --- identify -------------------------------------------------------------------
 
+/** The outcome of the last Identify, kept so it can be redrawn in another language. */
+type Result = { kind: 'fail'; error: string } | { kind: 'ok' | 'mismatch'; part: Part; boardId?: string; expected?: string[] };
+let result: Result | null = null;
+
+/** The big result shown after Identify. */
+function renderResult() {
+  const el = $('target-result');
+  if (!result) {
+    el.innerHTML = '';
+    return;
+  }
+  const box = (ok: boolean, title: string, text: string) =>
+    `<div class="result ${ok ? 'good' : 'bad'}" role="status"><span class="result-icon">${ok ? '✓' : '✗'}</span>` +
+    `<div><div class="result-title">${esc(title)}</div><div>${text}</div></div></div>`;
+  if (result.kind === 'fail') {
+    el.innerHTML = box(false, t('target.fail'), esc(result.error));
+    return;
+  }
+  const part = `<b>${esc(result.part.name)}</b>`;
+  const board = result.boardId ? boardById(result.boardId) : undefined;
+  if (result.kind === 'mismatch' && board) {
+    el.innerHTML = box(false, t('target.mismatch'), t('target.mismatch.text', {
+      part, board: `<b>${esc(boardName(board))}</b>`, expected: (result.expected ?? []).map(esc).join(` ${t('or')} `),
+    }));
+  } else {
+    el.innerHTML = box(true, t('target.ok'), board
+      ? t('target.ok.board', { part, board: esc(boardName(board)) })
+      : t('target.ok.plain', { part }));
+  }
+}
+
 async function identify() {
   target = null;
   $<HTMLDetailsElement>('fuse-section').open = false;
   $('target').innerHTML = '';
+  result = null;
+  renderResult();
   $('target-ops').hidden = true;
-  await withTarget(async (p, part, steps) => {
-    const config = await steps.run('Read signature, fuses and lock bits', () => readConfig(p, part),
-      () => part.name);
+  const found = await withTarget(async (p, part, steps) => {
+    const config = await steps.run(t('steps.readConfig'), () => readConfig(p, part), () => part.name);
     target = { part, config };
     edited = { ...config };
     renderPart();
     renderFuses();
     $('target-ops').hidden = false;
+    return part;
+  });
+  if (!found) {
+    result = { kind: 'fail', error: lastError };
+  } else {
     // does the chip match the board picked for the wiring?
     const board = boardById($<HTMLSelectElement>('sel-target-board').value);
-    if (board?.parts.length && !board.parts.includes(part.id)) {
+    if (board?.parts.length && !board.parts.includes(found.id)) {
       const { parts } = await loadParts();
-      const names = board.parts.map((id) => parts.find((q) => q.id === id)?.name ?? id);
-      status($('target-status'),
-        `Found an <b>${esc(part.name)}</b>, but you picked <b>${esc(board.name)}</b>, which carries ` +
-        `${names.map(esc).join(' or ')}. If that's unexpected, check the board choice and the wiring.`,
-        'warn-banner');
+      const expected = board.parts.map((id) => parts.find((q) => q.id === id)?.name ?? id);
+      result = { kind: 'mismatch', part: found, boardId: board.id, expected };
+    } else {
+      result = { kind: 'ok', part: found, boardId: board?.parts.length ? board.id : undefined };
     }
-  });
+  }
+  renderResult();
 }
 
 function renderPart() {
   if (!target) return;
   const { part } = target;
-  const kb = (n: number) => (n >= 1024 ? `${n / 1024} KB` : `${n} bytes`);
+  const kb = (n: number) => (n >= 1024 ? `${n / 1024} KB` : t('bytes', { n }));
   const rows: [string, string][] = [
-    ['Part', `<b>${esc(part.name)}</b> <span class="hint">(avrdude -p ${esc(part.id)})</span>`],
-    ['Signature', `<span class="mono">${part.signature.map(hex2).join(' ')}</span>`],
-    ['Flash', `${kb(part.flash.size)}${part.flash.paged ? `, pages of ${part.flash.page} bytes` : ''}`],
-    ['EEPROM', part.eeprom ? kb(part.eeprom.size) : 'none'],
+    [t('part.row.part'), `<b>${esc(part.name)}</b> <span class="hint">(avrdude -p ${esc(part.id)})</span>`],
+    [t('part.row.sig'), `<span class="mono">${part.signature.map(hex2).join(' ')}</span>`],
+    [t('part.row.flash'), `${kb(part.flash.size)}${part.flash.paged ? t('part.pages', { n: part.flash.page }) : ''}`],
+    [t('part.row.eeprom'), part.eeprom ? kb(part.eeprom.size) : t('part.none')],
   ];
   $('target').innerHTML = `<table>${rows.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('')}</table>`;
   $<HTMLButtonElement>('btn-ee-read').hidden = !part.eeprom;
@@ -155,9 +196,9 @@ function renderPart() {
 async function flashRead() {
   await withTarget(async (p, part, steps) => {
     bar().hidden = false;
-    const data = await steps.run(`Read ${part.flash.size} bytes of flash`, () => readFlash(p, part.flash.size, progress));
+    const data = await steps.run(t('steps.readFlash', { n: part.flash.size }), () => readFlash(p, part.flash.size, progress));
     save(`${part.id}-flash.hex`, toIntelHex(data));
-    steps.note(`Saved ${part.id}-flash.hex`);
+    steps.note(t('steps.saved', { name: `${part.id}-flash.hex` }));
   });
 }
 
@@ -176,30 +217,30 @@ async function flashWrite(verifyOnly: boolean) {
   const { name, image } = file;
   await withTarget(async (p, part, steps) => {
     bar().hidden = false;
-    steps.note(`${name}: ${image.end} bytes`);
+    steps.note(t('steps.fileBytes', { name, n: image.end }));
     const end = Math.ceil(image.end / Math.max(part.flash.page, 1)) * Math.max(part.flash.page, 1);
     if (!verifyOnly) {
-      await steps.run('Chip erase (flash, EEPROM unless EESAVE, lock bits)', () => chipErasePart(p, part));
+      await steps.run(t('steps.eraseFull'), () => chipErasePart(p, part));
       await refreshConfig(p, part); // the erase cleared the lock bits
-      await steps.run('Write flash', () =>
+      await steps.run(t('steps.writeFlash'), () =>
         writeFlash(p, image.data.subarray(0, end), part.flash.paged ? part.flash.page : 0, (f) => progress(f * 0.5)));
     }
-    await steps.run('Verify flash', async () => {
+    await steps.run(t('steps.verifyFlash'), async () => {
       const back = await readFlash(p, image.end, (f) => progress(verifyOnly ? f : 0.5 + f * 0.5));
       for (let a = 0; a < image.end; a++) {
         if (image.used[a] && back[a] !== image.data[a]) {
-          throw new Error(`mismatch at 0x${a.toString(16)}: read ${hex2(back[a])}, expected ${hex2(image.data[a])}`);
+          throw new Error(t('err.mismatchAt', { addr: a.toString(16), got: hex2(back[a]), want: hex2(image.data[a]) }));
         }
       }
     });
-    status($('target-status'), `<b>${verifyOnly ? 'Verified' : 'Written and verified'}:</b> ${esc(name)}`, 'ok-banner');
+    status($('target-status'), `<b>${esc(t(verifyOnly ? 'done.verified' : 'done.written'))}</b> ${esc(name)}`, 'ok-banner');
   });
 }
 
 async function chipErase() {
-  if (!(await ask('Chip erase clears the whole flash, the EEPROM (unless the EESAVE fuse is set) and the lock bits. Continue?'))) return;
+  if (!(await ask(t('erase.confirm')))) return;
   await withTarget(async (p, part, steps) => {
-    await steps.run('Chip erase', () => chipErasePart(p, part));
+    await steps.run(t('steps.erase'), () => chipErasePart(p, part));
     await refreshConfig(p, part); // the erase cleared the lock bits
   });
 }
@@ -216,9 +257,9 @@ async function eepromRead() {
   await withTarget(async (p, part, steps) => {
     if (!part.eeprom) return;
     bar().hidden = false;
-    const data = await steps.run(`Read ${part.eeprom.size} bytes of EEPROM`, () => readEeprom(p, part.eeprom!.size, progress));
+    const data = await steps.run(t('steps.readEeprom', { n: part.eeprom.size }), () => readEeprom(p, part.eeprom!.size, progress));
     save(`${part.id}-eeprom.hex`, toIntelHex(data));
-    steps.note(`Saved ${part.id}-eeprom.hex`);
+    steps.note(t('steps.saved', { name: `${part.id}-eeprom.hex` }));
   });
 }
 
@@ -236,15 +277,17 @@ async function eepromWrite() {
   const { name, image } = file;
   await withTarget(async (p, part, steps) => {
     bar().hidden = false;
-    const n = await steps.run(`Write ${name} to EEPROM`, () => writeEeprom(p, part, image, progress),
-      (n) => `${n} bytes changed`);
-    await steps.run('Verify EEPROM', async () => {
+    const n = await steps.run(t('steps.writeEeprom', { name }), () => writeEeprom(p, part, image, progress),
+      (n) => t('steps.changed', { n }));
+    await steps.run(t('steps.verifyEeprom'), async () => {
       const back = await readEeprom(p, part.eeprom!.size, () => undefined);
       for (let a = 0; a < image.end; a++) {
-        if (image.used[a] && back[a] !== image.data[a]) throw new Error(`mismatch at 0x${a.toString(16)}`);
+        if (image.used[a] && back[a] !== image.data[a]) {
+          throw new Error(t('err.mismatchAt', { addr: a.toString(16), got: hex2(back[a]), want: hex2(image.data[a]) }));
+        }
       }
     });
-    status($('target-status'), `<b>EEPROM written:</b> ${n} bytes changed`, 'ok-banner');
+    status($('target-status'), `<b>${esc(t('done.eeprom'))}</b> ${esc(t('steps.changed', { n }))}`, 'ok-banner');
   });
 }
 
@@ -267,7 +310,7 @@ const fieldValue = (byte: number, item: ConfigItem) => (byte & item.mask) >> ite
 function describe(f: Field, byte: number): string {
   const v = fieldValue(byte, f.item);
   const named = f.values.find(([value]) => value === v);
-  return named ? named[2] : `value ${v}`;
+  return named ? named[2] : t('fuses.value', { value: v });
 }
 
 /** Why a change needs care, or null. Blocking problems throw. */
@@ -275,18 +318,12 @@ function risk(f: Field, from: number, to: number): string | null {
   const name = f.item.name;
   const v = fieldValue(to, f.item);
   if (fieldValue(from, f.item) === v) return null;
-  if (name === 'spien' && v === 1) throw new Error('SPIEN can not be changed over ISP (and disabling it would lock ISP out)');
-  if (name === 'rstdisbl' && v === 0) {
-    return 'RSTDISBL turns the RESET pin into I/O: ISP stops working for good. Only a high-voltage programmer can undo it, or a bootloader such as Micronucleus can still update the flash.';
-  }
-  if (name === 'dwen' && v === 0) return 'DWEN switches on debugWIRE: ISP stops working until debugWIRE is switched off with a debugWIRE tool.';
-  if (/cksel|ckopt|clksel/.test(name)) {
-    return `Clock source becomes "${describe(f, to)}": the chip only runs, and can only be programmed, with that clock present.`;
-  }
-  if (name === 'ckdiv8' && v === 0) return 'CKDIV8 divides the clock by 8: use a lower SCK (a quarter of the new clock or less) from now on.';
-  if (f.item.mem === 'lock' && v !== fieldValue(0xff, f.item)) {
-    return 'Lock bits protect the chip against reading or writing; only a chip erase (which also erases flash and EEPROM) clears them.';
-  }
+  if (name === 'spien' && v === 1) throw new Error(t('risk.spien'));
+  if (name === 'rstdisbl' && v === 0) return t('risk.rstdisbl');
+  if (name === 'dwen' && v === 0) return t('risk.dwen');
+  if (/cksel|ckopt|clksel/.test(name)) return t('risk.clock', { value: describe(f, to) });
+  if (name === 'ckdiv8' && v === 0) return t('risk.ckdiv8');
+  if (f.item.mem === 'lock' && v !== fieldValue(0xff, f.item)) return t('risk.lock');
   return null;
 }
 
@@ -305,13 +342,13 @@ async function renderFuses() {
       const cur = fieldValue(edited[mem], f.item);
       const options = f.values.length
         ? f.values.map(([v, , comment]) => `<option value="${v}"${v === cur ? ' selected' : ''}>${esc(comment)}</option>`).join('') +
-          (f.values.some(([v]) => v === cur) ? '' : `<option value="${cur}" selected>value ${cur}</option>`)
+          (f.values.some(([v]) => v === cur) ? '' : `<option value="${cur}" selected>${esc(t('fuses.value', { value: cur }))}</option>`)
         : '';
       const input = f.values.length
         ? `<select data-mem="${mem}" data-field="${i}">${options}</select>`
         : `<input class="mono" size="4" data-mem="${mem}" data-field="${i}" value="${cur}">`;
       const wasValue = fieldValue(config[mem], f.item);
-      const was = wasValue !== cur ? `<div class="hint">was: ${esc(describe(f, config[mem]))}</div>` : '';
+      const was = wasValue !== cur ? `<div class="hint">${esc(t('fuses.was', { value: describe(f, config[mem]) }))}</div>` : '';
       // a select shows long values cut off, so the full text goes below it
       const text = describe(f, edited[mem]);
       const full = f.values.length && text.length > 36 ? `<div class="value-text">${esc(text)}</div>` : '';
@@ -319,13 +356,13 @@ async function renderFuses() {
         `<div class="field-head"><b title="${esc(f.item.name)}">${esc(f.item.name.toUpperCase())}</b> <span class="hint">${esc(f.item.description)}</span></div>` +
         `${input}${full}${was}</div>`;
     }).join('');
-    const title = mem === 'lock' ? 'lock bits' : `${mem}`;
-    return `<div class="fuse-mem"><h4>${title} <input class="mono" size="4" data-hex="${mem}" value="${hex2(edited[mem])}">` +
-      `${changed ? ` <span class="hint">was ${hex2(config[mem])}</span>` : ''}</h4>${rows}</div>`;
+    const title = mem === 'lock' ? t('fuse.lockbits') : `${mem}`;
+    return `<div class="fuse-mem"><h4>${esc(title)} <input class="mono" size="4" data-hex="${mem}" value="${hex2(edited[mem])}">` +
+      `${changed ? ` <span class="hint">${esc(t('fuses.wasHex', { value: hex2(config[mem]) }))}</span>` : ''}</h4>${rows}</div>`;
   }).join('');
   const anyChange = mems.some((m) => edited[m] !== config[m]);
   $('fuse-summary').textContent =
-    mems.map((m) => `${m === 'lock' ? 'lock' : m} ${hex2(edited[m])}`).join(' · ') + (anyChange ? ' (changed, not written)' : '');
+    mems.map((m) => `${m} ${hex2(edited[m])}`).join(' · ') + (anyChange ? ` ${t('fuses.changed')}` : '');
 
   // editing a field updates the byte, editing the byte updates the fields
   const memFields = (mem: string) => all.filter((f) => f.item.mem === mem);
@@ -373,7 +410,7 @@ async function writeConfig(which: 'fuses' | 'lock') {
     status($('target-status'), esc(errorText(e)), 'error');
     return;
   }
-  const text = `Write these changes?\n\n${changes.join('\n')}` + (risks.length ? `\n\nCareful:\n• ${risks.join('\n• ')}` : '');
+  const text = `${t('fuses.confirm')}\n\n${changes.join('\n')}` + (risks.length ? `\n\n${t('fuses.careful')}\n• ${risks.join('\n• ')}` : '');
   if (!(await ask(text))) return;
 
   // the byte with RSTDISBL or DWEN goes last, so everything else is in place first
@@ -381,9 +418,9 @@ async function writeConfig(which: 'fuses' | 'lock') {
   mems.sort((a, b) => Number(dangerous(a)) - Number(dangerous(b)));
   await withTarget(async (p, part, steps) => {
     for (const mem of mems) {
-      await steps.run(`Write ${mem} ${hex2(edited[mem])}`, () => writeMemory(p, part, mem, edited[mem]));
+      await steps.run(t('steps.writeMem', { mem, value: hex2(edited[mem]) }), () => writeMemory(p, part, mem, edited[mem]));
     }
-    const back = await steps.run('Read back', () => readConfig(p, part));
+    const back = await steps.run(t('steps.readBack'), () => readConfig(p, part));
     target!.config = back;
     // unused bits can read back differently: compare what the fields cover
     const bad = mems.filter((m) => {
@@ -392,10 +429,8 @@ async function writeConfig(which: 'fuses' | 'lock') {
     });
     edited = { ...back };
     await renderFuses();
-    if (bad.length) throw new Error(`${bad.join(', ')} read back ${bad.map((m) => hex2(back[m])).join(', ')}`);
-    status($('target-status'), which === 'lock'
-      ? '<b>Lock bits written.</b> Only a chip erase clears them.'
-      : `<b>Written:</b> ${mems.join(', ')}. Fuse changes take effect at the target's next reset.`, 'ok-banner');
+    if (bad.length) throw new Error(t('err.readBack', { mems: bad.join(', '), values: bad.map((m) => hex2(back[m])).join(', ') }));
+    status($('target-status'), esc(which === 'lock' ? t('done.lock') : t('done.fuses', { mems: mems.join(', ') })), 'ok-banner');
   });
 }
 
@@ -414,7 +449,7 @@ function drawTargetWiring() {
   const manual = manualReset(p);
   renderWiring($('wiring'), $<HTMLSelectElement>('sel-prog-board').value, $<HTMLSelectElement>('sel-target-board').value, {
     omit: manual ? ['RESET'] : [],
-    notes: manual ? ["No RESET wire: hold the target's RESET low (its reset button, or a jumper from RESET to GND) when the page asks."] : [],
+    notes: manual ? [t('wiring.noReset')] : [],
   });
 }
 
@@ -446,6 +481,15 @@ export function initTarget() {
   };
   $<HTMLInputElement>('manual-reset').addEventListener('change', drawTargetWiring);
   keepDrawn(drawTargetWiring);
+  colorEditor($('wire-colors'));
+  onLang(() => {
+    // board names in the selects, and the identified part's panels
+    boardOptions(selTarget, 'target');
+    setupProgrammerBoard(programmer.get());
+    renderPart();
+    renderResult();
+    void renderFuses();
+  });
 
   $('btn-read-target').onclick = identify;
   $('btn-flash-read').onclick = flashRead;
@@ -464,6 +508,8 @@ export function initTarget() {
     setupProgrammerBoard(p);
     drawTargetWiring();
     target = null;
+    result = null;
+    renderResult();
     $('target').innerHTML = '';
     $('target-ops').hidden = true;
     list().clear();

@@ -2,6 +2,8 @@
 // right and y down. Pin positions come from the boards' published design
 // files (see docs/BOARDS.md for sources); the artwork is our own.
 
+import { t, type Key } from '../i18n';
+
 export type Signal = 'MOSI' | 'MISO' | 'SCK' | 'RESET' | 'VCC' | 'GND';
 
 export const SIGNALS: Signal[] = ['MOSI', 'MISO', 'SCK', 'RESET', 'VCC', 'GND'];
@@ -30,13 +32,17 @@ export interface Shape {
   /** degrees, around the shape's center */
   rot?: number;
   label?: string;
+  /** translated label instead of label */
+  labelKey?: Key;
   /** chip: where pin 1 is marked */
   notch?: 'left' | 'right' | 'top' | 'bottom';
 }
 
 export interface Board {
   id: string;
+  /** product names are not translated; generic names use nameKey */
   name: string;
+  nameKey?: Key;
   /** can be the programmer (runs DigiISP, or is a USBasp) and/or the target */
   roles: ('programmer' | 'target')[];
   /** polygon, mm */
@@ -47,7 +53,7 @@ export interface Board {
   /** avrdude part ids of the chips this board carries (to check Identify) */
   parts: string[];
   /** shown next to the drawing */
-  notes: string[];
+  notes: Key[];
   /** never drawn turned (chips: notch up, as on a breadboard) */
   upright?: boolean;
 }
@@ -118,7 +124,7 @@ export const BOARDS: Board[] = [
       { x: 17.0, y: 17.25, label: 'VIN', side: 'up' },
     ],
     parts: ['t85'],
-    notes: ['P5 is the RESET pin (unless its RSTDISBL fuse is set).'],
+    notes: ['board.digispark.n1'],
   },
   {
     // Franzininho DIY V2RV3 (Franzininho.kicad_pcb), 51.1 x 30 mm
@@ -147,7 +153,7 @@ export const BOARDS: Board[] = [
       { x: 45.91, y: 5.99, label: 'GND', side: 'right', ...tinyRoles.GND },
     ],
     parts: ['t85'],
-    notes: ['RESET (PB5) is the header pin marked 4: the board labels 4 and 5 swapped.'],
+    notes: ['board.franzininho.n1'],
   },
   {
     // Arduino Uno Rev3 (UNO-TH_Rev3e.brd), 68.6 x 53.3 mm
@@ -164,16 +170,13 @@ export const BOARDS: Board[] = [
       { kind: 'header', x: 44.5, y: 1.3, w: 20.3, h: 2.5 },
       { kind: 'header', x: 26.7, y: 49.5, w: 20.3, h: 2.5 },
       { kind: 'header', x: 49.5, y: 49.5, w: 15.2, h: 2.5 },
-      { kind: 'header', x: 14.5, y: 4.6, w: 7.6, h: 5, label: 'ICSP1: USB chip, not this one' },
+      { kind: 'header', x: 14.5, y: 4.6, w: 7.6, h: 5, labelKey: 'board.uno.icsp1' },
       { kind: 'header', x: 62.4, y: 21.6, w: 5, h: 7.6, label: 'ICSP' },
     ],
     // ICSP next to the ATmega328P: pin 1 top left, odd pins down the left column
     pins: icsp6(63.63, 22.86, 0, 1, 1, 0),
     parts: ['m328p'],
-    notes: [
-      'Use the 6-pin ICSP header next to the ATmega328P (right edge), not ICSP1 next to the USB socket, which belongs to the USB chip.',
-      'Pin 1 (MISO) is the pin marked with a dot or a "1".',
-    ],
+    notes: ['board.uno.n1', 'board.uno.n2'],
   },
   {
     // Arduino Nano 3.x (NanoV3.3.brd), 43.2 x 17.8 mm
@@ -191,10 +194,7 @@ export const BOARDS: Board[] = [
     // ICSP at the far end from USB: pin 1 bottom right, odd pins up the outer column
     pins: icsp6(41.81, 11.43, 0, -1, -1, 0),
     parts: ['m328p', 'm328pb', 'm168'],
-    notes: [
-      'Use the 6 pins at the end opposite the USB socket (ICSP). Pin 1 (MISO) is marked "1".',
-      'Many Nano clones carry an ATmega328PB or an ATmega168.',
-    ],
+    notes: ['board.nano.n1', 'board.nano.n2'],
   },
   {
     // SparkFun Arduino Pro v16 (Arduino-Pro-v16.brd), 52.1 x 53.3 mm
@@ -213,7 +213,7 @@ export const BOARDS: Board[] = [
     ],
     pins: icsp6(46.99, 22.86, 0, 1, 1, 0),
     parts: ['m328p', 'm168'],
-    notes: ['The 6-pin ISP header is on the right. Pin 1 (MISO) is marked. 3.3 V boards: see the voltage note.'],
+    notes: ['board.pro.n1'],
   },
   {
     // SparkFun Pro Mini (Arduino-Pro-Mini.brd), 17.8 x 33 mm
@@ -232,7 +232,7 @@ export const BOARDS: Board[] = [
       13: { target: 'SCK' }, 12: { target: 'MISO' }, 11: { target: 'MOSI' },
     }),
     parts: ['m328p', 'm168'],
-    notes: ['All ISP pins are on one side: GND, RST, VCC at the top, 13 (SCK), 12 (MISO), 11 (MOSI) at the bottom.'],
+    notes: ['board.promini.n1'],
   },
   {
     // SparkFun Pro Micro v13 (SparkFun_Pro_Micro.brd), 17.8 x 33 mm; clones follow it
@@ -250,10 +250,7 @@ export const BOARDS: Board[] = [
       15: { target: 'SCK' }, 14: { target: 'MISO' }, 16: { target: 'MOSI' },
     }),
     parts: ['m32u4'],
-    notes: [
-      'All ISP pins are on one side: GND, RST, VCC at the top, 15 (SCK), 14 (MISO), 16 (MOSI) at the bottom.',
-      'Programming over ISP erases the USB bootloader (Caterina); write it back to use the USB port for uploads again.',
-    ],
+    notes: ['board.promicro.n1', 'board.promicro.n2'],
   },
   {
     // bare chip: DIP-8, top view, pin 1 top left
@@ -274,25 +271,27 @@ export const BOARDS: Board[] = [
       { x: 7.62, y: 1.27, label: '8 VCC', side: 'right', target: 'VCC' },
     ],
     parts: ['t12', 't13', 't13a', 't15', 't25', 't45', 't85'],
-    notes: ['Pin 1 is next to the notch or dot. The ATtiny11 has no ISP (high voltage only).'],
+    notes: ['board.dip8.n1'],
     upright: true,
   },
   {
     // any board with the standard 6-pin ISP header, seen from above, pin 1 top left
     id: 'icsp6',
     name: 'Other board with a 6-pin ISP header',
+    nameKey: 'board.icsp6.name',
     roles: ['target'],
     outline: rect(10, 12.6),
     color: '#555',
     shapes: [{ kind: 'header', x: 1.93, y: 2.77, w: 6.14, h: 8.66, label: 'ISP' }],
     pins: icsp6(3.73, 4.37, 0, 1, 1, 0),
     parts: [],
-    notes: ['Pin 1 (MISO) is usually marked with a dot, a triangle or a "1", or has a square pad.'],
+    notes: ['board.icsp6.n1'],
   },
   {
     // USBasp with the standard 10-pin ISP connector (ribbon cable end, seen from above)
     id: 'usbasp',
     name: 'USBasp (10-pin cable)',
+    nameKey: 'board.usbasp.name',
     roles: ['programmer'],
     outline: rect(60, 19),
     color: '#1d4f91',
@@ -312,8 +311,11 @@ export const BOARDS: Board[] = [
       };
     }),
     parts: [],
-    notes: ['The 10-pin connector: 1 MOSI, 2 VCC, 4/6/8/10 GND, 5 RESET, 7 SCK, 9 MISO. Pin 1 is marked with a triangle on the cable.'],
+    notes: ['board.usbasp.n1'],
   },
 ];
 
 export const boardById = (id: string) => BOARDS.find((b) => b.id === id);
+
+/** The board's name in the current language. */
+export const boardName = (b: Board) => (b.nameKey ? t(b.nameKey) : b.name);

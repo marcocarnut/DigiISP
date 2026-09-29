@@ -7,30 +7,37 @@
   </head>
   <body>
     <header>
-      <h1>DigiISP wiring</h1>
-      <p class="sub">All wiring diagrams: for checking the board drawings</p>
+      <div class="topbar">
+        <h1 data-i18n="gallery.title"></h1>
+        <select id="lang" class="lang" aria-label="Language / Idioma"></select>
+      </div>
+      <p class="sub" data-i18n="gallery.sub"></p>
     </header>
     <main>
       <section>
         <div class="row wiring-controls">
-          <label>Programmer <select id="sel-programmer"></select></label>
-          <label>Target <select id="sel-target"></select></label>
-          <label>Layout
+          <label><span data-i18n="gallery.programmer"></span> <select id="sel-programmer"></select></label>
+          <label><span data-i18n="gallery.target"></span> <select id="sel-target"></select></label>
+          <label><span data-i18n="gallery.layout"></span>
             <select id="sel-orientation">
-              <option value="auto">auto</option>
-              <option value="horizontal">side by side</option>
-              <option value="vertical">stacked</option>
+              <option value="auto" data-i18n="gallery.layout.auto"></option>
+              <option value="horizontal" data-i18n="gallery.layout.h"></option>
+              <option value="vertical" data-i18n="gallery.layout.v"></option>
             </select>
           </label>
-          <label>Highlight
+          <label><span data-i18n="gallery.highlight"></span>
             <select id="sel-highlight">
-              <option value="">none</option>
+              <option value="" data-i18n="gallery.none"></option>
               <option>MOSI</option><option>MISO</option><option>SCK</option>
               <option>RESET</option><option>VCC</option><option>GND</option>
             </select>
           </label>
         </div>
         <div id="diagram"></div>
+        <details class="subsection">
+          <summary><span data-i18n="wiring.colors"></span></summary>
+          <div id="wire-colors" class="wire-colors"></div>
+        </details>
       </section>
     </main>
     <script type="module" src="./src/wiring/spike.ts"></script>

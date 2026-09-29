@@ -1,7 +1,8 @@
 // Wiring diagrams: two boards (programmer and target) placed side by side or
 // stacked, turned so their ISP pins face each other, joined by jumper wires.
 
-import { SIGNALS, type Board, type Pin, type Shape, type Signal } from './boards';
+import { boardName, SIGNALS, type Board, type Pin, type Shape, type Signal } from './boards';
+import { t } from '../i18n';
 import { route } from './route';
 
 export type Orientation = 'horizontal' | 'vertical';
@@ -195,17 +196,19 @@ function boardSvg(pl: Placed, role: 'programmer' | 'target', used: Set<Pin>, k: 
     labels += text(lx, ly, p.label, `wd-label${used.has(p) ? ' used' : ''}`, anchor);
   }
   for (const s of b.shapes) {
-    if (!s.label) continue;
+    const label = s.labelKey ? t(s.labelKey) : s.label;
+    if (!label) continue;
     const [x, y] = pl.at([s.x + s.w / 2, s.y + s.h / 2]);
-    labels += text(x, y, s.label, s.kind === 'header' ? 'wd-shape-label wd-header-label' : 'wd-shape-label');
+    labels += text(x, y, label, s.kind === 'header' ? 'wd-shape-label wd-header-label' : 'wd-shape-label');
   }
   // the name goes above the board, or below it if a wire runs through that spot
   const nx = (pl.box.x0 + pl.box.x1) / 2;
-  const half = (b.name.length * 0.6 * 2.4 * k) / 2;
+  const name = boardName(b);
+  const half = (name.length * 0.6 * 2.4 * k) / 2;
   const clear = (y: number) => !wirePaths.some((path) => path.some((q, i) => i > 0 && segHitsBox(path[i - 1], q, nx - half, y - 1.5 * k, nx + half, y + 1.5 * k)));
   const above = pl.box.y0 - 1.5 - 1.5 * k;
   const below = pl.box.y1 + 1.5 + 1.5 * k;
-  labels += text(nx, clear(above) || !clear(below) ? above : below, b.name, 'wd-name');
+  labels += text(nx, clear(above) || !clear(below) ? above : below, name, 'wd-name');
   return [`${g}${outline}${shapes}${pins}</g>`, labels];
 }
 
@@ -284,7 +287,7 @@ export function drawWiring(prog: Board, tgt: Board, orientation: Orientation, hi
 
   const used = new Set(links.flatMap((l) => [l.from, l.to]));
   // board names are centered above each board and may be wider than it
-  const nameHalf = (pl: Placed) => pl.board.name.length * 0.6 * 2.4 * k / 2;
+  const nameHalf = (pl: Placed) => boardName(pl.board).length * 0.6 * 2.4 * k / 2;
   for (const pl of [a, b]) {
     const cx = (pl.box.x0 + pl.box.x1) / 2;
     pts.push([cx - nameHalf(pl), pl.box.y0 - 3 * k], [cx + nameHalf(pl), pl.box.y1 + 3 * k]);
@@ -297,7 +300,7 @@ export function drawWiring(prog: Board, tgt: Board, orientation: Orientation, hi
   const [bShapes, bText] = boardSvg(b, 'target', used, k, paths, highlight);
   const svg =
     `<svg class="wiring" xmlns="http://www.w3.org/2000/svg" viewBox="${f(x0)} ${f(y0)} ${f(x1 - x0)} ${f(y1 - y0)}" role="img" ` +
-    `aria-label="Wiring from ${esc(prog.name)} to ${esc(tgt.name)}" style="--k:${f(k)}">` +
+    `aria-label="${esc(boardName(prog))} → ${esc(boardName(tgt))}" style="--k:${f(k)}">` +
     aShapes + bShapes + wires + aText + bText + tags + '</svg>';
   return { svg, links, missing, crossings };
 }

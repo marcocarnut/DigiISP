@@ -5,8 +5,9 @@ import { chipErase, hex2, readFlash, readTargetInfo, writeFlash, writeFuse } fro
 import { DIGISPARK_FUSES, digiIspApplication, fullImage, T85 } from './images';
 import { Micronucleus } from './micronucleus';
 import { $, ask, Checklist, chooseProgrammer, chooserCancelled, errorText, esc, log, programmer, status } from './ui';
+import { onLang, t } from './i18n';
 import type { UsbAsp } from './usbasp';
-import { boardOptions, keepDrawn, remembered, renderWiring } from './wiring/widget';
+import { boardOptions, colorEditor, keepDrawn, remembered, renderWiring } from './wiring/widget';
 
 const SCK_187K = 9; // safe for a factory fresh ATtiny85 at 1 MHz
 
@@ -33,28 +34,23 @@ async function step1() {
     }
     const mn = m;
     const info = mn.info;
-    const sig = info.signature ? `, signature 1E ${hex2(info.signature[0]).slice(2)} ${hex2(info.signature[1]).slice(2)}` : '';
-    list.note(`Micronucleus ${info.version}: ${info.flashSize} bytes for the application${sig}`);
+    const sig = info.signature ? t('step1.sig', { sig: `1E ${hex2(info.signature[0]).slice(2)} ${hex2(info.signature[1]).slice(2)}` }) : '';
+    list.note(t('step1.info', { version: info.version, n: info.flashSize, sig }));
     if (info.signature && (info.signature[0] !== T85.signature[1] || info.signature[1] !== T85.signature[2])) {
-      throw new Error('This board is not an ATtiny85; DigiISP is built for the ATtiny85.');
+      throw new Error(t('err.notT85'));
     }
     const image = mn.prepare(app);
     bar.hidden = false;
     bar.value = 0;
-    await list.run('Erase application', () => mn.erase());
-    await list.run(`Write DigiISP (${app.end} bytes)`, () => mn.write(image, (f) => (bar.value = f)));
-    await list.run('Start DigiISP', () => mn.run());
-    status(statusEl,
-      '<b>Done.</b> The board now restarts as DigiISP. It generates its serial number on this first start, ' +
-      'so Chrome asks for permission once: click <b>Connect programmer</b> in step 2 and pick DigiISP.' +
-      '<br><button id="btn-step1-next">Go to step 2 →</button>', 'ok-banner');
+    await list.run(t('step1.erase'), () => mn.erase());
+    await list.run(t('step1.write', { n: app.end }), () => mn.write(image, (f) => (bar.value = f)));
+    await list.run(t('step1.start'), () => mn.run());
+    status(statusEl, t('step1.done') + `<br><button id="btn-step1-next">${esc(t('step1.next'))}</button>`, 'ok-banner');
     $('btn-step1-next').onclick = () => goToStep(2);
   } catch (e) {
     log(`step 1: ${errorText(e)}`);
     // USB transfer errors usually mean the bootloader timed out and left
-    const timeout = e instanceof DOMException
-      ? ' The bootloader gives up about 5 s after the board is plugged in; unplug it and try again.'
-      : '';
+    const timeout = e instanceof DOMException ? ` ${t('step1.timeout')}` : '';
     status(statusEl, esc(errorText(e)) + timeout, 'error');
     await m?.close();
   } finally {
@@ -71,7 +67,7 @@ function renderStep2Programmer(p: UsbAsp | null) {
   btn.disabled = !p;
   wiredRow.hidden = !p?.info?.resetControl;
   if (!p) {
-    el.innerHTML = '<p>No programmer connected. <button id="btn-step2-connect" class="secondary">Connect programmer…</button></p>';
+    el.innerHTML = `<p>${esc(t('step2.noProg'))} <button id="btn-step2-connect" class="secondary">${esc(t('prog.connect'))}</button></p>`;
     $('btn-step2-connect').onclick = async () => {
       try {
         await chooseProgrammer();
@@ -82,12 +78,8 @@ function renderStep2Programmer(p: UsbAsp | null) {
     return;
   }
   const name = `${esc(p.device.productName ?? '?')} <span class="mono">${esc(p.device.serialNumber ?? '')}</span>`;
-  const reset = p.info
-    ? p.info.resetControl
-      ? 'its reset pin is already I/O, so it could also drive the target reset from P5'
-      : 'its reset pin is still reset, so you hold the target reset (bootstrap mode)'
-    : 'a USBasp: it drives the target reset, so wire its RST to the second board';
-  el.innerHTML = `<p>Programmer: ${name}, ${reset}.</p>`;
+  const reset = t(p.info ? (p.info.resetControl ? 'step2.prog.driven' : 'step2.prog.manual') : 'step2.prog.usbasp');
+  el.innerHTML = `<p>${t('step2.prog', { name, reset: esc(reset) })}</p>`;
 }
 
 async function step2() {
@@ -115,66 +107,57 @@ async function step2() {
     await p.connect(manual);
     connected = true;
     if (manual) {
-      const go = await ask(
-        'Press and hold the RESET button of the second board (or short its P5 to GND), then click Continue. ' +
-        'Keep holding until the page tells you to release it, about 15 seconds.');
-      if (!go) {
-        list.note('Cancelled.');
+      if (!(await ask(t('step2.hold')))) {
+        list.note(t('steps.cancelled'));
         return;
       }
     }
 
-    await list.run('Enter programming mode', async () => {
-      if (!(await p.enableProgramming())) {
-        throw new Error('the second board does not answer: check the wiring, and that its RESET is held');
-      }
+    await list.run(t('steps.progmode'), async () => {
+      if (!(await p.enableProgramming())) throw new Error(t('err.secondNoAnswer'));
     });
-    const before = await list.run('Read signature and fuses', () => readTargetInfo(p),
-      (t) => `signature ${Array.from(t.signature, hex2).join(' ')}, fuses ${hex2(t.fuses.low)} ${hex2(t.fuses.high)} ${hex2(t.fuses.extended)}`);
-    if (!T85.signature.every((b, i) => before.signature[i] === b)) {
-      throw new Error('the second board is not an ATtiny85 (signature 1E 93 0B)');
-    }
+    const before = await list.run(t('step2.readInfo'), () => readTargetInfo(p),
+      (i) => t('step2.infoDetail', {
+        sig: Array.from(i.signature, hex2).join(' '),
+        fuses: `${hex2(i.fuses.low)} ${hex2(i.fuses.high)} ${hex2(i.fuses.extended)}`,
+      }));
+    if (!T85.signature.every((b, i) => before.signature[i] === b)) throw new Error(t('err.secondNotT85'));
 
     bar.hidden = false;
     erased = true;
-    await list.run('Chip erase', () => chipErase(p));
-    await list.run('Write Micronucleus 2.6 and DigiISP', () =>
+    await list.run(t('steps.erase'), () => chipErase(p));
+    await list.run(t('step2.write'), () =>
       writeFlash(p, image, T85.pageSize, (f) => (bar.value = f * 0.5)));
-    await list.run('Verify flash', async () => {
+    await list.run(t('steps.verifyFlash'), async () => {
       const back = await readFlash(p, T85.flashSize, (f) => (bar.value = 0.5 + f * 0.5));
       const bad = back.findIndex((b, i) => b !== image[i]);
       if (bad >= 0) {
-        throw new Error(`mismatch at 0x${bad.toString(16)}: read ${hex2(back[bad])}, expected ${hex2(image[bad])}`);
+        throw new Error(t('err.mismatchAt', { addr: bad.toString(16), got: hex2(back[bad]), want: hex2(image[bad]) }));
       }
     });
 
-    await list.run(`Write fuses: low ${hex2(DIGISPARK_FUSES.low)}, extended ${hex2(DIGISPARK_FUSES.extended)}, high ${hex2(highFuse)}`,
+    await list.run(t('step2.fuses', { low: hex2(DIGISPARK_FUSES.low), ext: hex2(DIGISPARK_FUSES.extended), high: hex2(highFuse) }),
       async () => {
         await writeFuse(p, 'low', DIGISPARK_FUSES.low);
         await writeFuse(p, 'extended', DIGISPARK_FUSES.extended);
         highWritten = true;
         await writeFuse(p, 'high', highFuse); // last: RSTDISBL takes effect on the next reset
       });
-    await list.run('Verify fuses', async () => {
+    await list.run(t('step2.verifyFuses'), async () => {
       const f = (await readTargetInfo(p)).fuses;
       // unused extended fuse bits may read back as 1 or 0 depending on the part
       if (f.low !== DIGISPARK_FUSES.low || f.high !== highFuse || (f.extended & 1) !== (DIGISPARK_FUSES.extended & 1)) {
-        throw new Error(`read back ${hex2(f.low)} ${hex2(f.high)} ${hex2(f.extended)}`);
+        throw new Error(t('err.fusesBack', { values: `${hex2(f.low)} ${hex2(f.high)} ${hex2(f.extended)}` }));
       }
     });
 
-    status(statusEl,
-      `<b>Done.</b> ${manual ? 'Release the RESET button and disconnect' : 'Disconnect'} the second board. Plugged into USB, it starts ` +
-      'Micronucleus and after about 6 s DigiISP' +
-      (disableReset ? ', ready to program other boards (and their reset pin, wired to its P5).' : ' (reset still enabled).'),
-      'ok-banner');
+    status(statusEl, t('step2.done', {
+      action: t(manual ? 'step2.done.release' : 'step2.done.disconnect'),
+      rest: t(disableReset ? 'step2.done.prog' : 'step2.done.reset'),
+    }), 'ok-banner');
   } catch (e) {
     log(`step 2: ${errorText(e)}`);
-    const safe = !erased
-      ? ' Nothing was written to the second board.'
-      : !highWritten
-        ? ' Its high fuse was not changed, so the second board still has its reset pin: fix the problem and run step 2 again.'
-        : '';
+    const safe = !erased ? ` ${t('step2.safe.nothing')}` : !highWritten ? ` ${t('step2.safe.reset')}` : '';
     status(statusEl, esc(errorText(e)) + safe, 'error');
   } finally {
     if (connected) {
@@ -183,7 +166,7 @@ async function step2() {
       } catch (e) {
         log(`disconnect failed: ${errorText(e)}`);
       }
-      if (manual) list.note('You can release the RESET button now.', 'release');
+      if (manual) list.note(t('steps.release'), 'release');
     }
     btn.disabled = !programmer.get();
   }
@@ -205,10 +188,10 @@ function drawStep2Wiring() {
   const p = programmer.get();
   const wired = !!p?.info?.resetControl && $<HTMLInputElement>('step2-wired').checked;
   const second = $<HTMLSelectElement>('sel-second-board').value;
-  const hold = second === 'franzininho' ? 'press and hold its RESET button' : 'connect its P5 to GND with a jumper';
+  const how = t(second === 'franzininho' ? 'step2.hold.button' : 'step2.hold.jumper');
   renderWiring($('step2-wiring'), $<HTMLSelectElement>('sel-first-board').value, second, {
     omit: wired ? [] : ['RESET'],
-    notes: wired ? [] : [`No RESET wire: when the page asks, hold the second board in reset: ${hold}.`],
+    notes: wired ? [] : [t('step2.noReset', { how })],
   });
 }
 
@@ -229,10 +212,25 @@ function setupStep2Boards() {
     drawStep2Wiring();
   });
   keepDrawn(drawStep2Wiring);
+  colorEditor($('wire-colors-2'));
+  onLang(() => {
+    boardOptions(first, 'programmer', ['digispark', 'franzininho']);
+    boardOptions(second, 'target', ['digispark', 'franzininho']);
+  });
+}
+
+/** "✓ done (show)" on collapsed steps comes from a data attribute (see style.css). */
+function markDone() {
+  document.querySelectorAll<HTMLElement>('#tab-bootstrap section.step h2').forEach((h) => (h.dataset.done = t('step.done')));
 }
 
 export function initBootstrap() {
   setupStep2Boards();
+  markDone();
+  onLang(() => {
+    markDone();
+    renderStep2Programmer(programmer.get());
+  });
   // a collapsed step opens again when its title is clicked
   document.querySelectorAll<HTMLElement>('#tab-bootstrap section.step h2').forEach((h) => {
     h.onclick = () => h.parentElement!.classList.remove('collapsed');

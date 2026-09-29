@@ -1,9 +1,10 @@
 import './style.css';
 import { describeFuse, Fuses, hex2, TINYx5_FUSES } from './avr';
 import { initBootstrap } from './bootstrap';
+import { applyStatic, languageSelect, onLang, t } from './i18n';
 import { CAP_TPI, SCK_OPTIONS, USB_PID, USB_VID } from './protocol';
 import { initTarget } from './target';
-import { $, chooseProgrammer, esc, log, programmer, showError } from './ui';
+import { $, chooseProgrammer, esc, expandHint, log, programmer, showError } from './ui';
 import { UsbAsp } from './usbasp';
 
 const programmerEl = $('programmer');
@@ -33,13 +34,14 @@ function fuseTables(f: Fuses): string {
     const rows = describeFuse(value, TINYx5_FUSES[title])
       .map(({ bit, text, programmed }) => {
         const cls = bit.danger && programmed ? 'danger' : '';
-        return `<tr><th>${bit.name}</th><td class="${cls}">${text}</td><td class="hint">${esc(bit.description)}</td></tr>`;
+        return `<tr><th>${bit.name}</th><td class="${cls}">${text}</td><td class="hint">${esc(t(bit.description))}</td></tr>`;
       })
       .join('');
-    return `<div><h3>${title} fuse <span class="mono">${hex2(value)}</span></h3><table>${rows}</table></div>`;
+    const name = { low: 'lfuse', high: 'hfuse', extended: 'efuse' }[title];
+    return `<div><h3>${esc(t('fuse.table.title', { name }))} <span class="mono">${hex2(value)}</span></h3><table>${rows}</table></div>`;
   };
   return `<div class="fuses">${table('low', f.low)}${table('high', f.high)}${table('extended', f.extended)}
-    <div><h3>lock bits <span class="mono">${hex2(f.lock)}</span></h3></div></div>`;
+    <div><h3>${esc(t('fuse.lockbits'))} <span class="mono">${hex2(f.lock)}</span></h3></div></div>`;
 }
 
 function renderProgrammer(p: UsbAsp | null) {
@@ -53,29 +55,30 @@ function renderProgrammer(p: UsbAsp | null) {
   }
   $('manual-reset-row').hidden = !(p.info?.resetControl ?? false);
   const d = p.device;
-  const kinds = { digiisp: 'DigiISP', usbasp: 'USBasp', unknown: 'unknown (speaks USBasp?)' };
+  const kinds = { digiisp: 'DigiISP', usbasp: 'USBasp', unknown: t('prog.kind.unknown') };
   const rows: [string, string][] = [
-    ['Device', `${esc(d.manufacturerName ?? '?')} / ${esc(d.productName ?? '?')}`],
-    ['Serial', d.serialNumber ? `<span class="mono">${esc(d.serialNumber)}</span>` : 'none (Chrome forgets permission on replug)'],
-    ['Type', kinds[p.kind]],
-    ['Capabilities', p.capabilities ? hex2(p.capabilities) + (p.capabilities & CAP_TPI ? ' (TPI)' : '') : 'not reported (old firmware?)'],
+    [t('prog.row.device'), `${esc(d.manufacturerName ?? '?')} / ${esc(d.productName ?? '?')}`],
+    [t('prog.row.serial'), d.serialNumber ? `<span class="mono">${esc(d.serialNumber)}</span>` : esc(t('prog.serial.none'))],
+    [t('prog.row.type'), esc(kinds[p.kind])],
+    [t('prog.row.caps'), p.capabilities ? hex2(p.capabilities) + (p.capabilities & CAP_TPI ? ' (TPI)' : '') : esc(t('prog.caps.none'))],
   ];
   let extra = '';
   if (p.info) {
     const i = p.info;
     rows.push(
-      ['Firmware', `v${i.firmwareVersion}, protocol v${i.protocolVersion}`],
-      ['Target reset', i.resetControl
-        ? '<span class="ok">driven by PB5</span>'
-        : 'not controllable (bootstrap mode): you hold the target in reset'],
+      [t('prog.row.firmware'), esc(t('prog.firmware', { fw: i.firmwareVersion, proto: i.protocolVersion }))],
+      [t('prog.row.reset'), i.resetControl
+        ? `<span class="ok">${esc(t('prog.reset.driven'))}</span>`
+        : esc(t('prog.reset.manual'))],
       ['OSCCAL', hex2(i.osccal)],
     );
-    extra = `<h3>This board's own fuses</h3>${fuseTables(i.fuses)}`;
+    extra = `<h3>${esc(t('prog.ownFuses'))}</h3>${fuseTables(i.fuses)}`;
   }
-  const reset = p.info ? (p.info.resetControl ? 'drives target reset' : 'bootstrap mode') : '';
+  const reset = p.info ? t(p.info.resetControl ? 'prog.summary.driven' : 'prog.summary.bootstrap') : '';
   const summary = [kinds[p.kind], d.serialNumber, reset].filter(Boolean).map((s) => esc(s!)).join(' · ');
+  const open = programmerEl.querySelector('details')?.open ? ' open' : '';
   programmerEl.innerHTML =
-    `<details class="section"><summary>${summary}</summary>` +
+    `<details class="section"${open}><summary>${summary} ${expandHint()}</summary>` +
     `<table>${rows.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('')}</table>${extra}</details>`;
 }
 
@@ -123,6 +126,10 @@ for (const o of SCK_OPTIONS) {
   const opt = new Option(o.label, String(o.id), false, o.id === 9);
   sckSelect.add(opt);
 }
+
+languageSelect($<HTMLSelectElement>('lang'));
+applyStatic();
+onLang(() => renderProgrammer(programmer.get()));
 
 window.addEventListener('hashchange', showTab);
 showTab();
