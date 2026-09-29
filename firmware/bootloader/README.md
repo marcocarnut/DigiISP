@@ -8,6 +8,13 @@ GPLv2.
 The web app's bootstrap uses it when it writes a complete image to a board
 over ISP (chip erase, then Micronucleus at 0x1A00 plus DigiISP below it).
 
+`micronucleus-2.6-t85_default-upgrade.hex` is the unmodified upstream upgrader
+(`firmware/upgrades/upgrade-t85_default.hex`, same commit): an application,
+uploaded through whatever Micronucleus a board has (1.x included), that
+rewrites the bootloader area with Micronucleus 2.6, erases the "application
+present" marker and reboots into the new bootloader. The web app uses it to
+upgrade boards before installing DigiISP.
+
 Configuration: bootloader at 0x1A00, entry on every reset (ENTRY_ALWAYS),
 6 s timeout, OSCCAL saved at 0x19FA, fuses lfuse 0xE1, hfuse 0xDD (0x5D with
 reset disabled), efuse 0xFE.

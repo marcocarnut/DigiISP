@@ -54,6 +54,6 @@
 #define DIGIISP_MAGIC0              'D'
 #define DIGIISP_MAGIC1              'I'
 #define DIGIISP_PROTOCOL_VERSION    1
-#define DIGIISP_FW_VERSION          2
+#define DIGIISP_FW_VERSION          3
 
 #endif /* __protocol_h_included__ */

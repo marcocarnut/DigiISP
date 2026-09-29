@@ -39,6 +39,13 @@
             <button id="btn-connect" data-i18n="prog.connect"></button>
             <button id="btn-disconnect" class="secondary" hidden data-i18n="prog.disconnect"></button>
             <button id="btn-reboot" class="secondary" hidden data-i18n="prog.reboot" data-i18n-title="prog.reboot.title"></button>
+            <button id="btn-fw-update" class="secondary" hidden data-i18n="fw.update" data-i18n-title="fw.update.title"></button>
+          </div>
+          <div id="fw-update" hidden>
+            <label class="option hint"><input type="checkbox" id="fw-upgrade" checked /> <span data-i18n="fw.upgradeOption"></span></label>
+            <progress id="fw-progress" max="1" value="0" hidden></progress>
+            <ol id="fw-steps" class="checklist"></ol>
+            <div id="fw-status"></div>
           </div>
           <div id="programmer"></div>
         </section>
@@ -118,6 +125,7 @@
           <h2><span class="step-no">1</span> <span data-i18n="step1.title"></span></h2>
           <p class="hint" data-i18n="step1.hint"></p>
           <ol class="howto" data-i18n-html="step1.howto"></ol>
+          <label class="option hint"><input type="checkbox" id="step1-upgrade" checked /> <span data-i18n="fw.upgradeOption"></span></label>
           <div class="row">
             <button id="btn-step1" data-i18n="step1.btn"></button>
           </div>

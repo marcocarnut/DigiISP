@@ -2,9 +2,10 @@
 // that board to turn a second one into a programmer over ISP.
 
 import { chipErase, hex2, readFlash, readTargetInfo, writeFlash, writeFuse } from './avr';
-import { DIGISPARK_FUSES, digiIspApplication, fullImage, T85 } from './images';
+import { installDigiIsp, pickBootloader } from './firmware';
+import { DIGISPARK_FUSES, fullImage, T85 } from './images';
 import { Micronucleus } from './micronucleus';
-import { $, ask, Checklist, chooseProgrammer, chooserCancelled, errorText, esc, log, programmer, status } from './ui';
+import { $, ask, Checklist, chooseProgrammer, errorText, esc, log, programmer, status } from './ui';
 import { onLang, t } from './i18n';
 import type { UsbAsp } from './usbasp';
 import { boardOptions, colorEditor, keepDrawn, remembered, renderWiring } from './wiring/widget';
@@ -25,26 +26,9 @@ async function step1() {
   bar.hidden = true;
   let m: Micronucleus | null = null;
   try {
-    const app = digiIspApplication();
-    try {
-      m = await Micronucleus.request();
-    } catch (e) {
-      if (chooserCancelled(e)) return;
-      throw e;
-    }
-    const mn = m;
-    const info = mn.info;
-    const sig = info.signature ? t('step1.sig', { sig: `1E ${hex2(info.signature[0]).slice(2)} ${hex2(info.signature[1]).slice(2)}` }) : '';
-    list.note(t('step1.info', { version: info.version, n: info.flashSize, sig }));
-    if (info.signature && (info.signature[0] !== T85.signature[1] || info.signature[1] !== T85.signature[2])) {
-      throw new Error(t('err.notT85'));
-    }
-    const image = mn.prepare(app);
-    bar.hidden = false;
-    bar.value = 0;
-    await list.run(t('step1.erase'), () => mn.erase());
-    await list.run(t('step1.write', { n: app.end }), () => mn.write(image, (f) => (bar.value = f)));
-    await list.run(t('step1.start'), () => mn.run());
+    m = await pickBootloader();
+    if (!m) return;
+    if (!(await installDigiIsp(m, $<HTMLInputElement>('step1-upgrade').checked, list, bar))) return;
     status(statusEl, t('step1.done') + `<br><button id="btn-step1-next">${esc(t('step1.next'))}</button>`, 'ok-banner');
     $('btn-step1-next').onclick = () => goToStep(2);
   } catch (e) {

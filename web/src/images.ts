@@ -3,6 +3,8 @@
 
 import digiIspHex from '../../firmware/digiisp.hex?raw';
 import micronucleusHex from '../../firmware/bootloader/micronucleus-2.6-t85_default.hex?raw';
+import upgradeHex from '../../firmware/bootloader/micronucleus-2.6-t85_default-upgrade.hex?raw';
+import protocolH from '../../firmware/protocol.h?raw';
 import { parseIntelHex } from './ihex';
 import { layoutApplication } from './micronucleus';
 
@@ -32,4 +34,15 @@ export function fullImage(): Uint8Array {
   image.set(layoutApplication(digiIspApplication(), T85.appSize, T85.bootloaderStart));
   image.set(boot.data.subarray(T85.bootloaderStart), T85.bootloaderStart);
   return image;
+}
+
+// --- firmware updates ---------------------------------------------------------------
+
+
+/** The DigiISP firmware version bundled with this page (DIGIISP_FW_VERSION). */
+export const FIRMWARE_VERSION = Number(/#define\s+DIGIISP_FW_VERSION\s+(\d+)/.exec(protocolH)?.[1] ?? 0);
+
+/** Micronucleus 2.6 upgrader: an application that replaces the bootloader. */
+export function upgradeApplication() {
+  return parseIntelHex(upgradeHex, T85.flashSize);
 }

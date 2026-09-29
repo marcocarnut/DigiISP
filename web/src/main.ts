@@ -1,10 +1,12 @@
 import './style.css';
 import { describeFuse, Fuses, hex2, TINYx5_FUSES } from './avr';
 import { initBootstrap } from './bootstrap';
+import { installDigiIsp, pickBootloader } from './firmware';
+import { FIRMWARE_VERSION } from './images';
 import { applyStatic, languageSelect, onLang, t } from './i18n';
 import { CAP_TPI, SCK_OPTIONS, USB_PID, USB_VID } from './protocol';
 import { initTarget } from './target';
-import { $, chooseProgrammer, esc, expandHint, log, programmer, showError } from './ui';
+import { $, Checklist, chooseProgrammer, errorText, esc, expandHint, log, programmer, showError, status } from './ui';
 import { UsbAsp } from './usbasp';
 
 const programmerEl = $('programmer');
@@ -12,6 +14,9 @@ const targetSection = $('target-section');
 const btnConnect = $<HTMLButtonElement>('btn-connect');
 const btnDisconnect = $<HTMLButtonElement>('btn-disconnect');
 const btnReboot = $<HTMLButtonElement>('btn-reboot');
+const btnFwUpdate = $<HTMLButtonElement>('btn-fw-update');
+/** A firmware update is running (the programmer is away in its bootloader meanwhile). */
+let fwBusy = false;
 const sckSelect = $<HTMLSelectElement>('sck');
 
 // --- tabs -----------------------------------------------------------------
@@ -48,6 +53,8 @@ function renderProgrammer(p: UsbAsp | null) {
   btnConnect.hidden = !!p;
   btnDisconnect.hidden = !p;
   btnReboot.hidden = p?.kind !== 'digiisp';
+  btnFwUpdate.hidden = p?.kind !== 'digiisp';
+  $('fw-update').hidden = !(fwBusy || p?.kind === 'digiisp');
   targetSection.hidden = !p;
   if (!p) {
     programmerEl.innerHTML = '';
@@ -66,7 +73,9 @@ function renderProgrammer(p: UsbAsp | null) {
   if (p.info) {
     const i = p.info;
     rows.push(
-      [t('prog.row.firmware'), esc(t('prog.firmware', { fw: i.firmwareVersion, proto: i.protocolVersion }))],
+      [t('prog.row.firmware'), i.firmwareVersion >= FIRMWARE_VERSION
+        ? esc(t('fw.version.latest', { fw: i.firmwareVersion, proto: i.protocolVersion }))
+        : `<span class="danger">${esc(t('fw.version.old', { fw: i.firmwareVersion, proto: i.protocolVersion, latest: FIRMWARE_VERSION }))}</span>`],
       [t('prog.row.reset'), i.resetControl
         ? `<span class="ok">${esc(t('prog.reset.driven'))}</span>`
         : esc(t('prog.reset.manual'))],
@@ -115,6 +124,44 @@ async function rebootProgrammer() {
   }
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Reboot the DigiISP into Micronucleus and install the bundled firmware. */
+async function updateFirmware() {
+  const p = programmer.get();
+  if (!p) return;
+  const list = new Checklist($('fw-steps'));
+  const bar = $<HTMLProgressElement>('fw-progress');
+  const statusEl = $('fw-status');
+  list.clear();
+  bar.hidden = true;
+  fwBusy = true;
+  btnFwUpdate.disabled = true;
+  $('fw-update').hidden = false;
+  try {
+    await p.reboot();
+    status(statusEl, esc(t('fw.updating')), 'prompt');
+    // the bootloader enumerates within a second; the picker still counts as
+    // opened by the click (Chrome allows about 5 s)
+    await sleep(1500);
+    const m = await pickBootloader();
+    status(statusEl, '');
+    if (!m) {
+      status(statusEl, esc(t('fw.noBootloader')), 'error');
+      return;
+    }
+    if (await installDigiIsp(m, $<HTMLInputElement>('fw-upgrade').checked, list, bar)) {
+      status(statusEl, t('fw.done'), 'ok-banner');
+    }
+  } catch (e) {
+    log(`firmware update: ${errorText(e)}`);
+    status(statusEl, esc(errorText(e)), 'error');
+  } finally {
+    fwBusy = false;
+    btnFwUpdate.disabled = false;
+  }
+}
+
 async function disconnectProgrammer() {
   await programmer.get()?.close();
   programmer.set(null);
@@ -160,3 +207,4 @@ if (!('usb' in navigator)) {
 btnConnect.onclick = connectProgrammer;
 btnDisconnect.onclick = disconnectProgrammer;
 btnReboot.onclick = rebootProgrammer;
+btnFwUpdate.onclick = updateFirmware;

@@ -131,11 +131,17 @@ Original plan:
 - Block transfers using READFLASH/WRITEFLASH, with timing measured against avrdude.
 
 ### Phase 5: extras
-- DigiISP updates its own bootloader: an option to upgrade a board's
-  Micronucleus (e.g. 1.x on new Digisparks to 2.6), the way Micronucleus's
-  "upgrade" images do it.
-- Firmware updates for DigiISP boards from the page (reboot into
-  Micronucleus, then the step 1 uploader), so no command-line tools are needed.
+- Done, not yet tested on hardware (2026-09-29): firmware updates from the
+  page. "Update firmware…" on a connected DigiISP reboots it into
+  Micronucleus, the device picker opens within Chrome's user-activation window,
+  and the bundled firmware is installed; the board comes back with the same
+  serial and reconnects. The programmer panel compares the firmware version
+  with the bundled one (DIGIISP_FW_VERSION, now 3).
+- Done, not yet tested on hardware: bootloader upgrade. With the option on
+  (default), an older Micronucleus (1.x on new Digisparks) is first replaced by
+  2.6 using upstream's upgrade image, then DigiISP goes into the new bootloader
+  (the user picks it again: the prompt's click opens the picker). Available in
+  Bootstrap step 1 and in the firmware update.
 - WebUSB landing page descriptor once the app is hosted (GitHub Pages, HTTPS).
 - TPI (ATtiny4/5/9/10) using the USBasp TPI requests.
 - UPDI (a single wire; tinyAVR 0/1/2, AVR Dx) as an extension.
