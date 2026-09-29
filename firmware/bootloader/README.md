@@ -18,3 +18,13 @@ upgrade boards before installing DigiISP.
 Configuration: bootloader at 0x1A00, entry on every reset (ENTRY_ALWAYS),
 6 s timeout, OSCCAL saved at 0x19FA, fuses lfuse 0xE1, hfuse 0xDD (0x5D with
 reset disabled), efuse 0xFE.
+
+## License and source
+
+Micronucleus is free software under the GNU GPL v2 (see its
+[Readme](https://github.com/micronucleus/micronucleus/blob/master/Readme.md)
+and [License.txt](https://github.com/micronucleus/micronucleus/blob/master/License.txt)),
+like DigiISP. These images are unmodified builds from upstream; their
+corresponding source is the upstream repository at tag **v2.6**
+(commit 6dca90b):
+https://github.com/micronucleus/micronucleus/tree/v2.6

@@ -1,4 +1,4 @@
-digiisp.elf
-digiisp.hex
+/digiisp.elf
+/digiisp.hex
 *.o
 local.mk

@@ -3,6 +3,7 @@
 #   make            build digiisp.hex
 #   make flash      upload with micronucleus (plug the board in when asked)
 #   make upload     reboot a running DigiISP into the bootloader, then upload
+#   make release    copy digiisp.hex to release/, the firmware the web app bundles
 #                   (SERIAL=xxxxxxxx picks one board when several are plugged in)
 #
 # Put local overrides (e.g. MICRONUCLEUS = /path/to/micronucleus) in local.mk.
@@ -60,4 +61,9 @@ $(DIGIISP):
 clean:
 	rm -f $(OBJS) digiisp.elf digiisp.hex
 
-.PHONY: all size flash upload clean
+release: digiisp.hex
+	mkdir -p release
+	cp digiisp.hex release/digiisp.hex
+	@echo "release/digiisp.hex: firmware v$$(sed -n 's/#define DIGIISP_FW_VERSION *//p' protocol.h)"
+
+.PHONY: all size flash upload release clean

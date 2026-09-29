@@ -1,7 +1,8 @@
 // Firmware images bundled with the app: DigiISP, and Micronucleus for
 // complete images written over ISP.
 
-import digiIspHex from '../../firmware/digiisp.hex?raw';
+// the released firmware (make -C firmware release), so building the page needs no AVR toolchain
+import digiIspHex from '../../firmware/release/digiisp.hex?raw';
 import micronucleusHex from '../../firmware/bootloader/micronucleus-2.6-t85_default.hex?raw';
 import upgradeHex from '../../firmware/bootloader/micronucleus-2.6-t85_default-upgrade.hex?raw';
 import protocolH from '../../firmware/protocol.h?raw';

@@ -1,5 +1,7 @@
 # DigiISP
 
+*[Leia em português](README.pt-BR.md)*
+
 **Turn a cheap Digispark or Franzininho into a USB programmer for AVR
 microcontrollers, and program chips straight from your browser, on a computer
 or a phone. Nothing to install.**
@@ -106,13 +108,18 @@ make                          # builds digiisp.hex
 make flash                    # upload: plug the board in when asked
 make upload                   # a DigiISP already running: reboot it into the bootloader and upload
 make upload SERIAL=54F6894A   # the same, for one of several boards
+make release                  # copy it to release/digiisp.hex, the firmware the web app ships
 ```
+
+`firmware/release/digiisp.hex` is committed: it is the firmware the page
+installs and compares boards against, so it is updated (with `make release`)
+together with `DIGIISP_FW_VERSION` in `protocol.h`. It is also the file to use
+with other upload tools.
 
 If `micronucleus` isn't on your PATH, put `MICRONUCLEUS = /path/to/micronucleus`
 in `firmware/local.mk`.
 
-**Web app** (needs Node 18 or newer; its build compiles the firmware too, so it
-also needs `gcc-avr`):
+**Web app** (needs Node 18 or newer, nothing else):
 
 ```sh
 cd web
@@ -144,7 +151,8 @@ DigiISP is free software under the **GNU General Public License v2** (see
 - [USBasp](https://www.fischl.de/usbasp/) by Thomas Fischl (GPLv2): the USB
   protocol and the ISP code the firmware is derived from
 - [Micronucleus](https://github.com/micronucleus/micronucleus) (GPLv2):
-  bootloader and upgrade images, and the upload protocol
+  bootloader and upgrade images, unmodified (source: upstream tag v2.6, see
+  [firmware/bootloader](firmware/bootloader/README.md)), and the upload protocol
 - [avrdude](https://github.com/avrdudes/avrdude) (GPLv2): part database and fuse
   descriptions
 - the published design files of the Digispark (Digistump), Franzininho DIY,
