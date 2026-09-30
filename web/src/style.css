@@ -612,6 +612,22 @@ svg.wiring text {
   gap: 1rem;
 }
 
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+a.repo {
+  display: flex;
+  color: var(--fg, currentColor);
+  opacity: 0.8;
+}
+
+a.repo:hover {
+  opacity: 1;
+}
+
 select.lang {
   font: inherit;
   font-size: 0.9rem;
