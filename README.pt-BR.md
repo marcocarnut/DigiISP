@@ -2,7 +2,7 @@
 
 *[Read in English](README.md)*
 
-**Transforme um Digispark ou Franzininho baratinho num gravador USB de
+**Transforme um [Digispark](https://www.aliexpress.com/w/wholesale-attiny85-digispark.html) ou [Franzininho](https://franzininho.com.br/) baratinho num gravador USB de
 microcontroladores AVR e grave chips direto do navegador, no computador ou no
 celular. Sem instalar nada.**
 
@@ -10,7 +10,7 @@ celular. Sem instalar nada.**
 
 O DigiISP são duas coisas que funcionam juntas:
 
-- **Um firmware** para placas ATtiny85 (Digispark, Franzininho DIY) que as
+- **Um firmware** para placas ATtiny85 ([Digispark](https://www.aliexpress.com/w/wholesale-attiny85-digispark.html), [Franzininho DIY](https://franzininho.com.br/)) que as
   transforma em gravadores ISP. Ele fala o protocolo do USBasp, então o avrdude e
   a IDE do Arduino também podem usá-lo.
 - **Um aplicativo web** que controla o gravador via WebUSB: identifica o chip,
@@ -39,9 +39,10 @@ página.
 
 ## Do que você precisa
 
-- **Duas** placas ATtiny85 com Micronucleus: Digispark (e clones) ou
-  Franzininho DIY. Digisparks novos vêm com Micronucleus 1.x; a página pode
-  atualizá-lo para o 2.6.
+- **Duas** placas ATtiny85 com Micronucleus: [Digispark](https://www.aliexpress.com/w/wholesale-attiny85-digispark.html) (e clones) ou
+  [Franzininho DIY](https://franzininho.com.br/). Digisparks novos vêm com Micronucleus 1.x; a página pode
+  atualizá-lo para o 2.6. Quem já tem outro gravador de AVR pode, em vez disso,
+  baixar o firmware na aba **Download** da página.
 - Alguns jumpers fêmea-fêmea (para um Digispark alvo, que não tem botão de
   reset, um cabo Y ou dois jumpers no mesmo pino).
 - Um navegador com WebUSB: Chrome, Edge ou outro baseado no Chromium, ou o

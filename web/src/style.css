@@ -721,3 +721,18 @@ p.must {
   font-weight: 600;
   font-size: 1.05rem;
 }
+
+pre.cmd {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+a {
+  color: var(--accent);
+}

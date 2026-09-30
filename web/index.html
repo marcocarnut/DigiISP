@@ -15,6 +15,7 @@
       <nav>
         <a href="#devices" data-i18n="tab.devices"></a>
         <a href="#bootstrap" data-i18n="tab.bootstrap"></a>
+        <a href="#download" data-i18n="tab.download"></a>
       </nav>
     </header>
 
@@ -42,7 +43,7 @@
             <button id="btn-fw-update" class="secondary" hidden data-i18n="fw.update" data-i18n-title="fw.update.title"></button>
           </div>
           <div id="fw-update" hidden>
-            <label class="option hint" id="fw-upgrade-row"><input type="checkbox" id="fw-upgrade" checked /> <span data-i18n="fw.upgradeOption"></span></label>
+            <label class="option hint" id="fw-upgrade-row"><input type="checkbox" id="fw-upgrade" checked /> <span data-i18n-html="fw.upgradeOption"></span></label>
             <progress id="fw-progress" max="1" value="0" hidden></progress>
             <ol id="fw-steps" class="checklist"></ol>
             <div id="fw-status"></div>
@@ -119,14 +120,14 @@
         <section>
           <h2 data-i18n="boot.title"></h2>
           <p class="must" data-i18n-html="boot.twoBoards"></p>
-          <p data-i18n="boot.intro"></p>
+          <p data-i18n-html="boot.intro"></p>
         </section>
 
         <section class="step" data-step="1">
           <h2><span class="step-no">1</span> <span data-i18n="step1.title"></span></h2>
           <p class="hint" data-i18n="step1.hint"></p>
           <ol class="howto" data-i18n-html="step1.howto"></ol>
-          <label class="option hint"><input type="checkbox" id="step1-upgrade" checked /> <span data-i18n="fw.upgradeOption"></span></label>
+          <label class="option hint"><input type="checkbox" id="step1-upgrade" checked /> <span data-i18n-html="fw.upgradeOption"></span></label>
           <div class="row">
             <button id="btn-step1" data-i18n="step1.btn"></button>
           </div>
@@ -167,6 +168,31 @@
           <progress id="step2-progress" max="1" value="0" hidden></progress>
           <ol id="step2-steps" class="checklist"></ol>
           <div id="step2-status"></div>
+        </section>
+      </div>
+
+      <!-- Download tab -->
+      <div id="tab-download" hidden>
+        <section>
+          <h2 data-i18n="dl.title"></h2>
+          <p data-i18n-html="dl.intro"></p>
+          <p class="hint" id="dl-version"></p>
+        </section>
+        <section>
+          <h3 data-i18n="dl.full.title"></h3>
+          <p data-i18n-html="dl.full.text"></p>
+          <div class="row"><button id="btn-dl-full"></button></div>
+          <p class="hint" data-i18n-html="dl.full.cmd"></p>
+          <pre class="cmd" id="dl-full-cmd"></pre>
+        </section>
+        <section>
+          <h3 data-i18n="dl.app.title"></h3>
+          <p data-i18n-html="dl.app.text"></p>
+          <div class="row"><button id="btn-dl-app" class="secondary"></button></div>
+          <pre class="cmd" id="dl-app-cmd"></pre>
+        </section>
+        <section>
+          <p data-i18n-html="dl.source"></p>
         </section>
       </div>
 

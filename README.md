@@ -2,7 +2,7 @@
 
 *[Leia em português](README.pt-BR.md)*
 
-**Turn a cheap Digispark or Franzininho into a USB programmer for AVR
+**Turn a cheap [Digispark](https://www.aliexpress.com/w/wholesale-attiny85-digispark.html) or [Franzininho](https://franzininho.com.br/) into a USB programmer for AVR
 microcontrollers, and program chips straight from your browser, on a computer
 or a phone. Nothing to install.**
 
@@ -10,7 +10,7 @@ or a phone. Nothing to install.**
 
 DigiISP is two things that work together:
 
-- **Firmware** for ATtiny85 boards (Digispark, Franzininho DIY) that makes them
+- **Firmware** for ATtiny85 boards ([Digispark](https://www.aliexpress.com/w/wholesale-attiny85-digispark.html), [Franzininho DIY](https://franzininho.com.br/)) that makes them
   an ISP programmer. It speaks the USBasp protocol, so avrdude and the Arduino
   IDE can use it too.
 - **A web app** that drives the programmer over WebUSB: it identifies the chip,
@@ -38,9 +38,10 @@ anyone holding a button. It still takes firmware updates over USB, from the page
 
 ## What you need
 
-- **Two** ATtiny85 boards with Micronucleus: Digispark (and clones) or
-  Franzininho DIY. New Digisparks come with Micronucleus 1.x; the page can
-  upgrade it to 2.6.
+- **Two** ATtiny85 boards with Micronucleus: [Digispark](https://www.aliexpress.com/w/wholesale-attiny85-digispark.html) (and clones) or
+  [Franzininho DIY](https://franzininho.com.br/). New Digisparks come with Micronucleus 1.x; the page can
+  upgrade it to 2.6. People who already have another AVR programmer can instead
+  get the firmware from the page's **Download** tab.
 - A few female-to-female jumper wires (for a Digispark target without a reset
   button, a Y cable or two jumpers on one pin).
 - A browser with WebUSB: Chrome, Edge or another Chromium based browser, or

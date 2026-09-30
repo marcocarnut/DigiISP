@@ -1,6 +1,7 @@
 import './style.css';
 import { describeFuse, Fuses, hex2, TINYx5_FUSES } from './avr';
 import { initBootstrap } from './bootstrap';
+import { initDownload } from './download';
 import { installDigiIsp, pickBootloader } from './firmware';
 import { FIRMWARE_VERSION } from './images';
 import { applyStatic, languageSelect, onLang, t } from './i18n';
@@ -30,7 +31,7 @@ const sckSelect = $<HTMLSelectElement>('sck');
 
 // --- tabs -----------------------------------------------------------------
 
-const TABS = ['devices', 'bootstrap'] as const;
+const TABS = ['devices', 'bootstrap', 'download'] as const;
 
 function showTab() {
   const name = location.hash.slice(1);
@@ -244,6 +245,7 @@ showTab();
 programmer.subscribe(renderProgrammer);
 initBootstrap();
 initTarget();
+initDownload();
 
 if (!('usb' in navigator)) {
   $('unsupported').hidden = false;

@@ -21,6 +21,9 @@ export const T85 = {
 /** Digispark fuses; hfuse 0xDD keeps reset, 0x5D turns PB5 into I/O. */
 export const DIGISPARK_FUSES = { low: 0xe1, extended: 0xfe, highReset: 0xdd, highNoReset: 0x5d } as const;
 
+/** The released firmware as Intel HEX text (for downloading). */
+export const DIGIISP_HEX = digiIspHex;
+
 export function digiIspApplication() {
   return parseIntelHex(digiIspHex, T85.flashSize);
 }
